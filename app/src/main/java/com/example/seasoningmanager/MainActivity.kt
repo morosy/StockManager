@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -22,6 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.ui.draw.clip
 
 data class Seasoning(
     val id: Long,
@@ -77,6 +88,7 @@ fun SeasoningManagerApp() {
     var sortMenuOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var addModalOpen by remember { mutableStateOf(false) }
 
     fun toggleStock() {
         when {
@@ -114,37 +126,68 @@ fun SeasoningManagerApp() {
     Scaffold(
         containerColor = appBg,
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text("調味料管理") },
-                    navigationIcon = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = null)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { searchOpen = !searchOpen }) {
-                            Icon(Icons.Filled.Search, contentDescription = null)
-                        }
-                    }
-                )
-
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // StatusBar分 + 16dp を確保（TopAppBar自体の「上部マージン」）
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(top = 16.dp, start = 24.dp, end = 24.dp)
+                ) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            // テキストを上下左右中央寄せ
+                            Box(
+                                modifier = Modifier.fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "在庫管理",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            // 三点リーダー：左
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = null)
+                            }
+                        },
+                        actions = {
+                            // 検索：右
+                            IconButton(onClick = { searchOpen = !searchOpen }) {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(28.dp)),
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = Color(0xFFF3EDF7),
+                            titleContentColor = Color(0xFF1C1B1F),
+                            navigationIconContentColor = Color(0xFF1C1B1F),
+                            actionIconContentColor = Color(0xFF1C1B1F)
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     FilterSegmentedRow(
                         modifier = Modifier.weight(1.3f),
-                        showStock,
-                        showOut,
-                        ::toggleStock,
-                        ::toggleOut
+                        showStock = showStock,
+                        showOut = showOut,
+                        onStockClick = ::toggleStock,
+                        onOutClick = ::toggleOut
                     )
-
                     SortSplitButton(
                         modifier = Modifier.weight(1f),
                         label = sortMode.label,
@@ -156,7 +199,6 @@ fun SeasoningManagerApp() {
                         }
                     )
                 }
-
                 if (searchOpen) {
                     OutlinedTextField(
                         value = query,
@@ -172,7 +214,9 @@ fun SeasoningManagerApp() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {},
+                onClick = { addModalOpen = true },
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
                 containerColor = Color.White,
                 contentColor = Color(0xFF6750A4)
             ) {
@@ -180,6 +224,23 @@ fun SeasoningManagerApp() {
             }
         }
     ) { padding ->
+
+        if (addModalOpen) {
+            AddModal(
+                onDismiss = { addModalOpen = false },
+                onSave = { name ->
+                    val now = System.currentTimeMillis()
+                    val nextId = (items.maxOfOrNull { it.id } ?: 0L) + 1L
+                    items = items + Seasoning(
+                        id = nextId,
+                        name = name,
+                        inStock = true,      // ← 状態：在庫 で追加
+                        createdAt = now
+                    )
+                    addModalOpen = false
+                }
+            )
+        }
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -226,14 +287,24 @@ private fun FilterSegmentedRow(
             text = "在庫",
             selected = showStock,
             onClick = onStockClick,
-            shape = RoundedCornerShape(12.dp, 0.dp, 0.dp, 12.dp)
+            shape = RoundedCornerShape(
+                topStart = 20.dp,
+                bottomStart = 20.dp,
+                topEnd = 0.dp,
+                bottomEnd = 0.dp
+            )
         )
         SegmentedLikeButton(
             modifier = Modifier.weight(1f).fillMaxHeight(),
             text = "欠品",
             selected = showOut,
             onClick = onOutClick,
-            shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)
+            shape = RoundedCornerShape(
+                topStart = 0.dp,
+                bottomStart = 0.dp,
+                topEnd = 20.dp,
+                bottomEnd = 20.dp
+            )
         )
     }
 }
@@ -287,7 +358,10 @@ private fun SortSplitButton(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
+                shape = RoundedCornerShape(
+                    topStart = 20.dp,
+                    bottomStart = 20.dp
+                ),
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = containerColor,
                     contentColor = contentColor
@@ -319,7 +393,10 @@ private fun SortSplitButton(
                 modifier = Modifier
                     .width(52.dp)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+                shape = RoundedCornerShape(
+                    topEnd = 20.dp,
+                    bottomEnd = 20.dp
+                ),
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = containerColor,
                     contentColor = contentColor
@@ -374,6 +451,122 @@ private fun MagnetCard(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(seasoning.name, color = textColor)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddModal(
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+
+    fun attemptSave() {
+        val name = text.trim()
+        if (name.isEmpty()) {
+            showError = true
+            return
+        }
+        onSave(name)
+        text = ""
+        showError = false
+    }
+
+    Dialog(
+        onDismissRequest = { onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Header: close + title
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(
+                        onClick = { onDismiss() },
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "閉じる")
+                    }
+
+                    Text(
+                        text = "追加",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        if (showError) {
+                            showError = it.trim().isEmpty()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("名前") },
+                    placeholder = { Text("名前を入力") },
+                    singleLine = true,
+                    isError = showError,
+                    trailingIcon = {
+                        if (text.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    text = ""
+                                    showError = true
+                                }
+                            ) {
+                                Icon(Icons.Filled.Clear, contentDescription = "クリア")
+                            }
+                        }
+                    },
+                    supportingText = {
+                        if (showError) {
+                            Text("入力してください")
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { attemptSave() }
+                    )
+                )
+
+                Button(
+                    onClick = { attemptSave() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    enabled = text.trim().isNotEmpty(), // 未入力のとき「保存」押せない
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF6750A4),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFF6750A4).copy(alpha = 0.40f),
+                        disabledContentColor = Color.White.copy(alpha = 0.80f)
+                    )
+                ) {
+                    Text("保存")
+                }
+            }
         }
     }
 }
