@@ -535,7 +535,7 @@ private fun MagnetCard(
     val infinite = rememberInfiniteTransition(label = "wobble")
     val wobbleZ = if (editMode && !isDeleting) {
         infinite.animateFloat(
-            initialValue = -1.2f,
+            initialValue = -0.8f,
             targetValue = 1.2f,
             animationSpec = infiniteRepeatable(
                 animation = tween(durationMillis = 140, easing = LinearEasing),
