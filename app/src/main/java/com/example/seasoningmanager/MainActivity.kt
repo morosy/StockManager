@@ -33,6 +33,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.animation.core.FastOutSlowInEasing
 
 // Animation用
 import androidx.compose.animation.core.Animatable
@@ -96,6 +98,7 @@ fun SeasoningManagerApp() {
     var searchOpen by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var addModalOpen by remember { mutableStateOf(false) }
+    var editMode by remember { mutableStateOf(false) }
 
     fun toggleStock() {
         when {
@@ -218,60 +221,96 @@ fun SeasoningManagerApp() {
                     )
                 }
             }
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { addModalOpen = true },
-                modifier = Modifier.size(56.dp),
-                shape = CircleShape,
-                containerColor = Color.White,
-                contentColor = Color(0xFF6750A4)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-            }
         }
     ) { padding ->
-
-        if (addModalOpen) {
-            AddModal(
-                onDismiss = { addModalOpen = false },
-                onSave = { name ->
-                    val now = System.currentTimeMillis()
-                    val nextId = (items.maxOfOrNull { it.id } ?: 0L) + 1L
-                    items = items + Seasoning(
-                        id = nextId,
-                        name = name,
-                        inStock = true,      // ← 状態：在庫 で追加
-                        createdAt = now
-                    )
-                    addModalOpen = false
-                }
-            )
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(filteredSortedItems, key = { it.id }) { seasoning ->
-                MagnetCard(
-                    seasoning,
-                    stockBg,
-                    stockText,
-                    stockBorder,
-                    outBg,
-                    outText
-                ) {
-                    items = items.map {
-                        if (it.id == seasoning.id)
-                            it.copy(inStock = !it.inStock)
-                        else it
+            // ---- メイン内容（グリッド）----
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredSortedItems, key = { it.id }) { seasoning ->
+                    MagnetCard(
+                        seasoning = seasoning,
+                        stockBg = stockBg,
+                        stockText = stockText,
+                        stockBorder = stockBorder,
+                        outBg = outBg,
+                        outText = outText,
+                        editMode = editMode,
+                        onToggle = {
+                            if (editMode) {
+                                return@MagnetCard
+                            }
+                            items = items.map {
+                                if (it.id == seasoning.id) it.copy(inStock = !it.inStock) else it
+                            }
+                        },
+                        onDelete = { items = items.filterNot { it.id == seasoning.id } }
+                    )
+                }
+            }
+
+            // ---- AddModal（必要なら最前面）----
+            if (addModalOpen && !editMode) {
+                AddModal(
+                    onDismiss = { addModalOpen = false },
+                    onSave = { name ->
+                        val now = System.currentTimeMillis()
+                        val nextId = (items.maxOfOrNull { it.id } ?: 0L) + 1L
+                        items = items + Seasoning(
+                            id = nextId,
+                            name = name,
+                            inStock = true,
+                            createdAt = now
+                        )
+                        addModalOpen = false
                     }
+                )
+            }
+
+            // ---- 左下：edit FAB（start=24固定）----
+            FloatingActionButton(
+                onClick = {
+                    editMode = !editMode
+                    if (editMode) {
+                        addModalOpen = false
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 24.dp, bottom = 24.dp)
+                    .size(56.dp),
+                shape = CircleShape,
+                containerColor = if (editMode) Color(0xFFB3261E) else Color.White,
+                contentColor = if (editMode) Color.White else Color(0xFF6750A4)
+            ) {
+                Icon(Icons.Filled.Edit, contentDescription = "編集")
+            }
+
+            // ---- 右下：+ FAB（end=24固定 / editMode中は非表示）----
+            if (!editMode) {
+                FloatingActionButton(
+                    onClick = { addModalOpen = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(end = 24.dp, bottom = 24.dp)
+                        .size(56.dp),
+                    shape = CircleShape,
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF6750A4)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "追加")
                 }
             }
         }
@@ -439,72 +478,97 @@ private fun MagnetCard(
     stockBorder: Color,
     outBg: Color,
     outText: Color,
-    onToggle: () -> Unit
+    editMode: Boolean,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    // 0f = 表 / 180f = 裏
-    val rotation = remember(seasoning.id) { Animatable(0f) }
-    var showingFront by remember(seasoning.id) { mutableStateOf(seasoning.inStock) }
-    // 外部の状態更新（items更新）に追従
+
+    val rotation = remember(seasoning.id) { Animatable(if (seasoning.inStock) 0f else 180f) }
+
+    // 外部状態に追従
     LaunchedEffect(seasoning.inStock) {
-        showingFront = seasoning.inStock
-        // 状態に応じて角度も合わせる（急に切り替わらないように）
         val target = if (seasoning.inStock) 0f else 180f
         if (kotlin.math.abs(rotation.value - target) > 1f) {
             rotation.snapTo(target)
         }
     }
-    // 「今どちら面を描画するか」は角度で決める
+
     val drawFront = rotation.value <= 90f
+
     val bg = if (drawFront) stockBg else outBg
     val textColor = if (drawFront) stockText else outText
     val border = if (drawFront) BorderStroke(1.dp, stockBorder) else null
 
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .graphicsLayer {
-                rotationY = rotation.value
-                cameraDistance = 16f * density
-            }
-            .clickable {
-                scope.launch {
-                    // 1) 0->180 or 180->0 へ回す
-                    val goingToBack = rotation.value < 90f
-                    val target = if (goingToBack) 180f else 0f
-
-                    rotation.animateTo(
-                        targetValue = target,
-                        // 回転速度
-                        animationSpec = tween(durationMillis = 700)
-                    )
-
-                    // 2) アニメーション完了後に状態反転（DB/状態を更新）
-                    //    表裏の「意味」＝在庫/欠品なので、回った後に確定で切り替える
-                    onToggle()
-                }
-            },
-        shape = RoundedCornerShape(12.dp),
-        color = bg,
-        border = border
     ) {
-        // 90°超えると鏡文字になるので、裏面はさらに180°回して正しい向きにする
-        Box(
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .graphicsLayer {
-                    if (!drawFront) {
-                        rotationY = 180f
+                    rotationY = rotation.value
+                    cameraDistance = 16f * density
+                }
+                .clickable {
+                    if (editMode) {
+                        return@clickable
+                    }
+                    scope.launch {
+                        val goingToBack = rotation.value < 90f
+                        val target = if (goingToBack) 180f else 0f
+
+                        rotation.animateTo(
+                            targetValue = target,
+                            animationSpec = tween(
+                                durationMillis = 700,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                        onToggle()
                     }
                 },
-            contentAlignment = Alignment.Center
+            shape = RoundedCornerShape(12.dp),
+            color = bg,
+            border = border
         ) {
-            Text(
-                text = seasoning.name,
-                color = textColor,
-                fontWeight = FontWeight.Medium
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        if (!drawFront) {
+                            rotationY = 180f
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = seasoning.name,
+                    color = textColor,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // editMode中：右上に ×
+        if (editMode) {
+            IconButton(
+                onClick = { onDelete() },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(28.dp)
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "削除",
+                    tint = Color(0xFFB3261E)
+                )
+            }
         }
     }
 }
