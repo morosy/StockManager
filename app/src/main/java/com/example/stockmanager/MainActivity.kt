@@ -1,66 +1,110 @@
-package com.example.seasoningmanager
+package com.example.stockmanager
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkOut
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.background
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.animation.core.FastOutSlowInEasing
-
-// Animation用
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.graphicsLayer
-import kotlinx.coroutines.launch
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkOut
-import androidx.compose.ui.draw.shadow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 
-data class Seasoning(
+data class StockItem(
     val id: Long,
     val name: String,
     val inStock: Boolean,
     val createdAt: Long,
+)
+
+data class Board(
+    val id: Long,
+    val name: String,
+    val items: List<StockItem>,
 )
 
 enum class SortMode(val label: String) {
@@ -76,7 +120,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                SeasoningManagerApp()
+                StockManagerApp()
             }
         }
     }
@@ -84,7 +128,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeasoningManagerApp() {
+fun StockManagerApp() {
 
     val appBg = Color(0xFFF5F5F5)
     val stockBg = Color.White
@@ -93,15 +137,40 @@ fun SeasoningManagerApp() {
     val outBg = Color(0xFFF9DEDC)
     val outText = Color(0xFFB3261E)
 
-    var items by remember {
+    var boards by remember {
         mutableStateOf(
             listOf(
-                Seasoning(1, "しょうゆ", true, 1_000L),
-                Seasoning(2, "塩", true, 2_000L),
-                Seasoning(3, "こしょう", false, 3_000L),
-                Seasoning(4, "みりん", true, 4_000L),
+                Board(
+                    id = 1L,
+                    name = "Home",
+                    items = listOf(
+                        StockItem(1, "しょうゆ", true, 1_000L),
+                        StockItem(2, "塩", true, 2_000L),
+                        StockItem(3, "こしょう", false, 3_000L),
+                        StockItem(4, "みりん", true, 4_000L),
+                    )
+                ),
+                Board(
+                    id = 2L,
+                    name = "Board 2",
+                    items = listOf(
+                        StockItem(1, "みそ", true, 1_000L),
+                        StockItem(2, "料理酒", true, 2_000L),
+                    )
+                ),
             )
         )
+    }
+
+    var currentBoardId by remember { mutableStateOf(1L) }
+
+    fun currentBoard(): Board = boards.first { it.id == currentBoardId }
+    fun currentItems(): List<StockItem> = currentBoard().items
+
+    fun updateItems(newItems: List<StockItem>) {
+        boards = boards.map { b ->
+            if (b.id == currentBoardId) b.copy(items = newItems) else b
+        }
     }
 
     var showStock by remember { mutableStateOf(true) }
@@ -112,12 +181,20 @@ fun SeasoningManagerApp() {
     var query by remember { mutableStateOf("") }
     var addModalOpen by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
+
+    // 削除アニメ中のID
     val deletingIds = remember { mutableStateListOf<Long>() }
     val scope = rememberCoroutineScope()
 
+    // ボードメニュー
+    var drawerOpen by remember { mutableStateOf(false) }
+
     fun toggleStock() {
         when {
-            showStock && !showOut -> { showStock = false; showOut = true }
+            showStock && !showOut -> {
+                showStock = false
+                showOut = true
+            }
             showStock && showOut -> showStock = false
             else -> showStock = true
         }
@@ -125,28 +202,34 @@ fun SeasoningManagerApp() {
 
     fun toggleOut() {
         when {
-            !showStock && showOut -> { showOut = false; showStock = true }
+            !showStock && showOut -> {
+                showOut = false
+                showStock = true
+            }
             showStock && showOut -> showOut = false
             else -> showOut = true
         }
     }
 
     fun requestDelete(id: Long) {
-        if (!deletingIds.contains(id)) {
-            deletingIds.add(id)
-            scope.launch {
-                delay(220) // ← exitアニメ(下で指定)より少し長め
-                items = items.filterNot { it.id == id }
-                deletingIds.remove(id)
-            }
+        if (deletingIds.contains(id)) return
+        deletingIds.add(id)
+
+        scope.launch {
+            delay(220) // exitアニメより少し長め
+            val newItems = currentItems().filterNot { it.id == id }
+            updateItems(newItems)
+            deletingIds.remove(id)
         }
     }
 
-    val filteredSortedItems = remember(items, showStock, showOut, sortMode, query) {
+    val filteredSortedItems = remember(boards, currentBoardId, showStock, showOut, sortMode, query) {
         val q = query.trim()
+        val items = currentItems()
+
         val filtered = items.filter {
             val passStock = (it.inStock && showStock) || (!it.inStock && showOut)
-            val passQuery = q.isEmpty() || it.name.contains(q, true)
+            val passQuery = q.isEmpty() || it.name.contains(q, ignoreCase = true)
             passStock && passQuery
         }
 
@@ -162,10 +245,7 @@ fun SeasoningManagerApp() {
     Scaffold(
         containerColor = appBg,
         topBar = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // StatusBar分 + 16dp を確保（TopAppBar自体の「上部マージン」）
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -174,27 +254,24 @@ fun SeasoningManagerApp() {
                 ) {
                     CenterAlignedTopAppBar(
                         title = {
-                            // テキストを上下左右中央寄せ
                             Box(
                                 modifier = Modifier.fillMaxHeight(),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "在庫管理",
+                                    text = currentBoard().name,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
                         },
                         navigationIcon = {
-                            // 三点リーダー：左
-                            IconButton(onClick = {}) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = null)
+                            IconButton(onClick = { drawerOpen = !drawerOpen }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "メニュー")
                             }
                         },
                         actions = {
-                            // 検索：右
                             IconButton(onClick = { searchOpen = !searchOpen }) {
-                                Icon(Icons.Filled.Search, contentDescription = null)
+                                Icon(Icons.Filled.Search, contentDescription = "検索")
                             }
                         },
                         modifier = Modifier
@@ -206,10 +283,13 @@ fun SeasoningManagerApp() {
                             titleContentColor = Color(0xFF1C1B1F),
                             navigationIconContentColor = Color(0xFF1C1B1F),
                             actionIconContentColor = Color(0xFF1C1B1F)
-                        )
+                        ),
+                        windowInsets = WindowInsets(0, 0, 0, 0)
                     )
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -235,6 +315,7 @@ fun SeasoningManagerApp() {
                         }
                     )
                 }
+
                 if (searchOpen) {
                     OutlinedTextField(
                         value = query,
@@ -242,7 +323,7 @@ fun SeasoningManagerApp() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        placeholder = { Text("調味料名で検索") },
+                        placeholder = { Text("アイテム名で検索") },
                         singleLine = true
                     )
                 }
@@ -254,7 +335,6 @@ fun SeasoningManagerApp() {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ---- メイン内容（グリッド）----
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier
@@ -263,56 +343,46 @@ fun SeasoningManagerApp() {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(filteredSortedItems, key = { it.id }) { seasoning ->
+                items(filteredSortedItems, key = { it.id }) { item ->
                     MagnetCard(
-                        seasoning = seasoning,
+                        item = item,
                         stockBg = stockBg,
                         stockText = stockText,
                         stockBorder = stockBorder,
                         outBg = outBg,
                         outText = outText,
                         editMode = editMode,
-                        isDeleting = deletingIds.contains(seasoning.id),
+                        isDeleting = deletingIds.contains(item.id),
                         onToggle = {
-                            if (editMode) {
-                                return@MagnetCard
+                            if (editMode) return@MagnetCard
+                            val itemsNow = currentItems()
+                            val newItems = itemsNow.map {
+                                if (it.id == item.id) it.copy(inStock = !it.inStock) else it
                             }
-                            items = items.map {
-                                if (it.id == seasoning.id) it.copy(inStock = !it.inStock) else it
-                            }
+                            updateItems(newItems)
                         },
-                        onDelete = {
-                            requestDelete(seasoning.id)
-                        }
+                        onDelete = { requestDelete(item.id) }
                     )
                 }
             }
 
-            // ---- AddModal（必要なら最前面）----
             if (addModalOpen && !editMode) {
                 AddModal(
                     onDismiss = { addModalOpen = false },
                     onSave = { name ->
                         val now = System.currentTimeMillis()
-                        val nextId = (items.maxOfOrNull { it.id } ?: 0L) + 1L
-                        items = items + Seasoning(
-                            id = nextId,
-                            name = name,
-                            inStock = true,
-                            createdAt = now
-                        )
+                        val itemsNow = currentItems()
+                        val nextId = (itemsNow.maxOfOrNull { it.id } ?: 0L) + 1L
+                        updateItems(itemsNow + StockItem(nextId, name, true, now))
                         addModalOpen = false
                     }
                 )
             }
 
-            // ---- 左下：edit FAB（start=24固定）----
             FloatingActionButton(
                 onClick = {
                     editMode = !editMode
-                    if (editMode) {
-                        addModalOpen = false
-                    }
+                    if (editMode) addModalOpen = false
                 },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -326,7 +396,6 @@ fun SeasoningManagerApp() {
                 Icon(Icons.Filled.Edit, contentDescription = "編集")
             }
 
-            // ---- 右下：+ FAB（end=24固定 / editMode中は非表示）----
             if (!editMode) {
                 FloatingActionButton(
                     onClick = { addModalOpen = true },
@@ -344,7 +413,24 @@ fun SeasoningManagerApp() {
             }
         }
     }
+
+    // ✅ ここがポイント：Scaffold の外（上）に置く
+    BoardDrawerOverlay(
+        open = drawerOpen,
+        boards = boards,
+        currentBoardId = currentBoardId,
+        onSelectBoard = { id ->
+            currentBoardId = id
+            drawerOpen = false
+        },
+        onClose = { drawerOpen = false },
+        onManageBoards = {
+            // 後ほど実装
+            drawerOpen = false
+        }
+    )
 }
+
 
 @Composable
 private fun FilterSegmentedRow(
@@ -354,11 +440,11 @@ private fun FilterSegmentedRow(
     onStockClick: () -> Unit,
     onOutClick: () -> Unit
 ) {
-    Row(
-        modifier = modifier.height(40.dp)
-    ) {
+    Row(modifier = modifier.height(40.dp)) {
         SegmentedLikeButton(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
             text = "在庫",
             selected = showStock,
             onClick = onStockClick,
@@ -370,7 +456,9 @@ private fun FilterSegmentedRow(
             )
         )
         SegmentedLikeButton(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
             text = "欠品",
             selected = showOut,
             onClick = onOutClick,
@@ -392,9 +480,7 @@ private fun SegmentedLikeButton(
     onClick: () -> Unit,
     shape: RoundedCornerShape
 ) {
-    val bg = if (selected)
-        MaterialTheme.colorScheme.secondaryContainer
-    else Color.White
+    val bg = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.White
 
     Surface(
         modifier = modifier,
@@ -420,14 +506,12 @@ private fun SortSplitButton(
     Box(modifier = modifier) {
         val containerColor = MaterialTheme.colorScheme.secondaryContainer
         val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        val dividerColor = MaterialTheme.colorScheme.outlineVariant
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(40.dp)
         ) {
-            // 左：テキスト（最小幅）
             FilledTonalButton(
                 onClick = { onMenuOpenChange(true) },
                 modifier = Modifier
@@ -446,23 +530,12 @@ private fun SortSplitButton(
                 Text(label, maxLines = 1)
             }
 
-            // 真ん中の区切り線（Split感を出す）
             Box(
                 modifier = Modifier
                     .width(1.dp)
-                    .fillMaxHeight(),
-            ) {
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 6.dp)
-                        .fillMaxWidth()
-                )
-            }
-            // ※ Spacerの色はRowの背景に依存するので、下のSurface案がより綺麗です
-            // まずは「▼を出す」目的で簡易のままでもOK
+                    .fillMaxHeight()
+            )
 
-            // 右：ドロップダウン（必ず表示させるため固定幅）
             FilledTonalButton(
                 onClick = { onMenuOpenChange(true) },
                 modifier = Modifier
@@ -501,7 +574,7 @@ private fun SortSplitButton(
 
 @Composable
 private fun MagnetCard(
-    seasoning: Seasoning,
+    item: StockItem,
     stockBg: Color,
     stockText: Color,
     stockBorder: Color,
@@ -514,40 +587,35 @@ private fun MagnetCard(
 ) {
     val scope = rememberCoroutineScope()
 
-    val rotation = remember(seasoning.id) {
-        Animatable(if (seasoning.inStock) 0f else 180f)
-    }
+    // ひっくり返し（元のアニメに戻す：タップ時だけ animateTo / 状態追従は snapTo）
+    val flipRotation = remember(item.id) { Animatable(if (item.inStock) 0f else 180f) }
 
-    LaunchedEffect(seasoning.inStock) {
-        val target = if (seasoning.inStock) 0f else 180f
-        if (abs(rotation.value - target) > 1f) {
-            rotation.snapTo(target)
+    LaunchedEffect(item.inStock) {
+        val target = if (item.inStock) 0f else 180f
+        if (abs(flipRotation.value - target) > 1f) {
+            flipRotation.snapTo(target)
         }
     }
 
-    val drawFront = rotation.value <= 90f
-
+    val drawFront = flipRotation.value <= 90f
     val bg = if (drawFront) stockBg else outBg
     val textColor = if (drawFront) stockText else outText
     val border = if (drawFront) BorderStroke(1.dp, stockBorder) else null
 
-    // ===== 揺れ（削除モード時のみ） =====
-    val infinite = rememberInfiniteTransition(label = "wobble")
-    val wobbleZ = if (editMode && !isDeleting) {
-        infinite.animateFloat(
-            initialValue = -0.8f,
-            targetValue = 1.2f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 140, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "wobbleZ"
-        ).value
-    } else {
-        0f
+    // 揺れ（弱め：±0.8f。Animatableで互換性重視）
+    val wobbleZ = remember(item.id) { Animatable(0f) }
+
+    LaunchedEffect(editMode, isDeleting) {
+        if (editMode && !isDeleting) {
+            while (isActive) {
+                wobbleZ.animateTo(-0.8f, tween(durationMillis = 140, easing = LinearEasing))
+                wobbleZ.animateTo(0.8f, tween(durationMillis = 140, easing = LinearEasing))
+            }
+        } else {
+            wobbleZ.snapTo(0f)
+        }
     }
 
-    // ===== 削除アニメ =====
     AnimatedVisibility(
         visible = !isDeleting,
         exit = fadeOut(animationSpec = tween(180)) + shrinkOut(animationSpec = tween(180))
@@ -556,26 +624,22 @@ private fun MagnetCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .graphicsLayer {
-                    rotationZ = wobbleZ
-                }
+                .graphicsLayer { rotationZ = wobbleZ.value }
         ) {
             Surface(
                 modifier = Modifier
                     .matchParentSize()
                     .graphicsLayer {
-                        rotationY = rotation.value
+                        rotationY = flipRotation.value
                         cameraDistance = 16f * density
                     }
                     .clickable {
-                        if (editMode) {
-                            return@clickable
-                        }
+                        if (editMode) return@clickable
                         scope.launch {
-                            val goingToBack = rotation.value < 90f
+                            val goingToBack = flipRotation.value < 90f
                             val target = if (goingToBack) 180f else 0f
 
-                            rotation.animateTo(
+                            flipRotation.animateTo(
                                 targetValue = target,
                                 animationSpec = tween(
                                     durationMillis = 700,
@@ -600,7 +664,7 @@ private fun MagnetCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = seasoning.name,
+                        text = item.name,
                         color = textColor,
                         fontWeight = FontWeight.Medium
                     )
@@ -666,7 +730,6 @@ private fun AddModal(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Header: close + title
                 Box(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
@@ -715,12 +778,8 @@ private fun AddModal(
                             Text("入力してください")
                         }
                     },
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { attemptSave() }
-                    )
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { attemptSave() })
                 )
 
                 Button(
@@ -728,7 +787,7 @@ private fun AddModal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    enabled = text.trim().isNotEmpty(), // 未入力のとき「保存」押せない
+                    enabled = text.trim().isNotEmpty(),
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF6750A4),
@@ -738,6 +797,121 @@ private fun AddModal(
                     )
                 ) {
                     Text("保存")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoardDrawerOverlay(
+    open: Boolean,
+    boards: List<Board>,
+    currentBoardId: Long,
+    onSelectBoard: (Long) -> Unit,
+    onClose: () -> Unit,
+    onManageBoards: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+
+    // アニメを Animatable で統一（環境差で animateFloatAsState 等が無くても動く）
+    val scrim = remember { Animatable(0f) }
+    val panelX = remember { Animatable(-280f) } // dp相当（最後に dp に入れる）
+
+    LaunchedEffect(open) {
+        if (open) {
+            scope.launch { scrim.animateTo(0.45f, tween(220)) }
+            scope.launch { panelX.animateTo(0f, tween(260, easing = FastOutSlowInEasing)) }
+        } else {
+            scope.launch { scrim.animateTo(0f, tween(180)) }
+            scope.launch { panelX.animateTo(-280f, tween(220, easing = FastOutSlowInEasing)) }
+        }
+    }
+
+    // 透明でもタップを拾えるよう、scrimが完全に0になるまで描画
+    if (open || scrim.value > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(999f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = scrim.value))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { onClose() }
+            )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(280.dp)
+                    .offset(x = panelX.value.dp),
+                color = Color.White,
+                tonalElevation = 6.dp,
+                shape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(top = 12.dp, bottom = 12.dp)
+                ) {
+                    Text(
+                        text = "ボード",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(boards, key = { it.id }) { b ->
+                            val selected = b.id == currentBoardId
+                            val bg = if (selected) Color(0xFFF3EDF7) else Color.Transparent
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = bg,
+                                shape = RoundedCornerShape(12.dp),
+                                onClick = { onSelectBoard(b.id) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = b.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        thickness = DividerDefaults.Thickness,
+                        color = DividerDefaults.color
+                    )
+
+                    TextButton(
+                        onClick = onManageBoards,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("ボードを追加・編集")
+                    }
                 }
             }
         }

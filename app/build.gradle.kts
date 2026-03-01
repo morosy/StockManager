@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.seasoningmanager"
+    namespace = "com.example.stockmanager"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.seasoningmanager"
+        applicationId = "com.example.stockmanager"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
