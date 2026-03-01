@@ -56,7 +56,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -70,7 +69,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -120,7 +118,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                StockManagerApp()
+                BoardDrawOverlay()
             }
         }
     }
@@ -128,8 +126,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockManagerApp() {
-
+fun BoardDrawOverlay() {
     val appBg = Color(0xFFF5F5F5)
     val stockBg = Color.White
     val stockText = Color(0xFF1C1B1F)
@@ -182,12 +179,20 @@ fun StockManagerApp() {
     var addModalOpen by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
 
-    // 削除アニメ中のID
     val deletingIds = remember { mutableStateListOf<Long>() }
     val scope = rememberCoroutineScope()
 
     // ボードメニュー
     var drawerOpen by remember { mutableStateOf(false) }
+
+    // ボード管理（編集）モード
+    var boardEditMode by remember { mutableStateOf(false) }
+
+    // ボード追加モーダル
+    var boardAddModalOpen by remember { mutableStateOf(false) }
+
+    // ボード削除確認（対象ボード）
+    var pendingDeleteBoard by remember { mutableStateOf<Board?>(null) }
 
     fun toggleStock() {
         when {
@@ -216,10 +221,38 @@ fun StockManagerApp() {
         deletingIds.add(id)
 
         scope.launch {
-            delay(220) // exitアニメより少し長め
+            delay(220)
             val newItems = currentItems().filterNot { it.id == id }
             updateItems(newItems)
             deletingIds.remove(id)
+        }
+    }
+
+    // ボード追加
+    fun addBoard(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            return
+        }
+        val nextId = (boards.maxOfOrNull { it.id } ?: 0L) + 1L
+        boards = boards + Board(
+            id = nextId,
+            name = trimmed,
+            items = emptyList()
+        )
+    }
+
+    // ボード削除（最低1つは残す）
+    fun deleteBoard(boardId: Long) {
+        val remaining = boards.filterNot { it.id == boardId }
+        if (remaining.isEmpty()) {
+            return
+        }
+
+        boards = remaining
+
+        if (currentBoardId == boardId) {
+            currentBoardId = remaining.first().id
         }
     }
 
@@ -242,195 +275,237 @@ fun StockManagerApp() {
         }
     }
 
-    Scaffold(
-        containerColor = appBg,
-        topBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(top = 16.dp, start = 24.dp, end = 24.dp)
-                ) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Box(
-                                modifier = Modifier.fillMaxHeight(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = currentBoard().name,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { drawerOpen = !drawerOpen }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "メニュー")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = { searchOpen = !searchOpen }) {
-                                Icon(Icons.Filled.Search, contentDescription = "検索")
-                            }
-                        },
+    // ✅ 重要：BoardDrawerOverlay を TopBar 含めて覆うため、Scaffold を Box で包んで overlay を外側に出す
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        Scaffold(
+            containerColor = appBg,
+            topBar = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
-                            .clip(RoundedCornerShape(28.dp)),
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color(0xFFF3EDF7),
-                            titleContentColor = Color(0xFF1C1B1F),
-                            navigationIconContentColor = Color(0xFF1C1B1F),
-                            actionIconContentColor = Color(0xFF1C1B1F)
-                        ),
-                        windowInsets = WindowInsets(0, 0, 0, 0)
-                    )
+                            .statusBarsPadding()
+                            .padding(top = 16.dp, start = 24.dp, end = 24.dp)
+                    ) {
+                        CenterAlignedTopAppBar(
+                            title = {
+                                Box(
+                                    modifier = Modifier.fillMaxHeight(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = currentBoard().name,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { drawerOpen = !drawerOpen }) {
+                                    Icon(Icons.Filled.MoreVert, contentDescription = "メニュー")
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { searchOpen = !searchOpen }) {
+                                    Icon(Icons.Filled.Search, contentDescription = "検索")
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(28.dp)),
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = Color(0xFFF3EDF7),
+                                titleContentColor = Color(0xFF1C1B1F),
+                                navigationIconContentColor = Color(0xFF1C1B1F),
+                                actionIconContentColor = Color(0xFF1C1B1F)
+                            ),
+                            windowInsets = WindowInsets(0, 0, 0, 0)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilterSegmentedRow(
+                            modifier = Modifier.weight(1.3f),
+                            showStock = showStock,
+                            showOut = showOut,
+                            onStockClick = ::toggleStock,
+                            onOutClick = ::toggleOut
+                        )
+                        SortSplitButton(
+                            modifier = Modifier.weight(1f),
+                            label = sortMode.label,
+                            menuOpen = sortMenuOpen,
+                            onMenuOpenChange = { sortMenuOpen = it },
+                            onSelect = {
+                                sortMode = it
+                                sortMenuOpen = false
+                            }
+                        )
+                    }
+
+                    if (searchOpen) {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            placeholder = { Text("アイテム名で検索") },
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(filteredSortedItems, key = { it.id }) { item ->
+                        MagnetCard(
+                            item = item,
+                            stockBg = stockBg,
+                            stockText = stockText,
+                            stockBorder = stockBorder,
+                            outBg = outBg,
+                            outText = outText,
+                            editMode = editMode,
+                            isDeleting = deletingIds.contains(item.id),
+                            onToggle = {
+                                if (editMode) return@MagnetCard
+                                val itemsNow = currentItems()
+                                val newItems = itemsNow.map {
+                                    if (it.id == item.id) it.copy(inStock = !it.inStock) else it
+                                }
+                                updateItems(newItems)
+                            },
+                            onDelete = { requestDelete(item.id) }
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilterSegmentedRow(
-                        modifier = Modifier.weight(1.3f),
-                        showStock = showStock,
-                        showOut = showOut,
-                        onStockClick = ::toggleStock,
-                        onOutClick = ::toggleOut
-                    )
-                    SortSplitButton(
-                        modifier = Modifier.weight(1f),
-                        label = sortMode.label,
-                        menuOpen = sortMenuOpen,
-                        onMenuOpenChange = { sortMenuOpen = it },
-                        onSelect = {
-                            sortMode = it
-                            sortMenuOpen = false
+                if (addModalOpen && !editMode) {
+                    AddModal(
+                        onDismiss = { addModalOpen = false },
+                        onSave = { name ->
+                            val now = System.currentTimeMillis()
+                            val itemsNow = currentItems()
+                            val nextId = (itemsNow.maxOfOrNull { it.id } ?: 0L) + 1L
+                            updateItems(itemsNow + StockItem(nextId, name, true, now))
+                            addModalOpen = false
                         }
                     )
                 }
 
-                if (searchOpen) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        placeholder = { Text("アイテム名で検索") },
-                        singleLine = true
-                    )
-                }
-            }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(filteredSortedItems, key = { it.id }) { item ->
-                    MagnetCard(
-                        item = item,
-                        stockBg = stockBg,
-                        stockText = stockText,
-                        stockBorder = stockBorder,
-                        outBg = outBg,
-                        outText = outText,
-                        editMode = editMode,
-                        isDeleting = deletingIds.contains(item.id),
-                        onToggle = {
-                            if (editMode) return@MagnetCard
-                            val itemsNow = currentItems()
-                            val newItems = itemsNow.map {
-                                if (it.id == item.id) it.copy(inStock = !it.inStock) else it
-                            }
-                            updateItems(newItems)
-                        },
-                        onDelete = { requestDelete(item.id) }
-                    )
-                }
-            }
-
-            if (addModalOpen && !editMode) {
-                AddModal(
-                    onDismiss = { addModalOpen = false },
-                    onSave = { name ->
-                        val now = System.currentTimeMillis()
-                        val itemsNow = currentItems()
-                        val nextId = (itemsNow.maxOfOrNull { it.id } ?: 0L) + 1L
-                        updateItems(itemsNow + StockItem(nextId, name, true, now))
-                        addModalOpen = false
-                    }
-                )
-            }
-
-            FloatingActionButton(
-                onClick = {
-                    editMode = !editMode
-                    if (editMode) addModalOpen = false
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(start = 24.dp, bottom = 24.dp)
-                    .size(56.dp),
-                shape = CircleShape,
-                containerColor = if (editMode) Color(0xFFB3261E) else Color.White,
-                contentColor = if (editMode) Color.White else Color(0xFF6750A4)
-            ) {
-                Icon(Icons.Filled.Edit, contentDescription = "編集")
-            }
-
-            if (!editMode) {
                 FloatingActionButton(
-                    onClick = { addModalOpen = true },
+                    onClick = {
+                        editMode = !editMode
+                        if (editMode) {
+                            addModalOpen = false
+                        }
+                    },
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.BottomStart)
                         .navigationBarsPadding()
-                        .padding(end = 24.dp, bottom = 24.dp)
+                        .padding(start = 24.dp, bottom = 24.dp)
                         .size(56.dp),
                     shape = CircleShape,
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF6750A4)
+                    containerColor = if (editMode) Color(0xFFB3261E) else Color.White,
+                    contentColor = if (editMode) Color.White else Color(0xFF6750A4)
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "追加")
+                    Icon(Icons.Filled.Edit, contentDescription = "編集")
+                }
+
+                if (!editMode) {
+                    FloatingActionButton(
+                        onClick = { addModalOpen = true },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .navigationBarsPadding()
+                            .padding(end = 24.dp, bottom = 24.dp)
+                            .size(56.dp),
+                        shape = CircleShape,
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF6750A4)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "追加")
+                    }
                 }
             }
         }
-    }
 
-    // ✅ ここがポイント：Scaffold の外（上）に置く
-    BoardDrawerOverlay(
-        open = drawerOpen,
-        boards = boards,
-        currentBoardId = currentBoardId,
-        onSelectBoard = { id ->
-            currentBoardId = id
-            drawerOpen = false
-        },
-        onClose = { drawerOpen = false },
-        onManageBoards = {
-            // 後ほど実装
-            drawerOpen = false
+        // ✅ ボード追加モーダル（編集モード内）
+        if (boardAddModalOpen) {
+            BoardAddModal(
+                onDismiss = { boardAddModalOpen = false },
+                onSave = { name ->
+                    addBoard(name)
+                    boardAddModalOpen = false
+                }
+            )
         }
-    )
-}
 
+        // ✅ ボード削除確認
+        pendingDeleteBoard?.let { target ->
+            ConfirmBoardDeleteDialog(
+                boardName = target.name,
+                onConfirm = {
+                    deleteBoard(target.id)
+                    pendingDeleteBoard = null
+                },
+                onCancel = {
+                    pendingDeleteBoard = null
+                }
+            )
+        }
+
+        // ✅ TopBar まで覆うオーバーレイ（編集モード対応）
+        BoardDrawerOverlay(
+            open = drawerOpen,
+            boards = boards,
+            currentBoardId = currentBoardId,
+            editMode = boardEditMode,
+            onSelectBoard = { id ->
+                currentBoardId = id
+                drawerOpen = false
+            },
+            onClose = {
+                drawerOpen = false
+                boardEditMode = false
+            },
+            onEnterEdit = {
+                boardEditMode = true
+            },
+            onExitEdit = {
+                boardEditMode = false
+            },
+            onAddBoard = {
+                boardAddModalOpen = true
+            },
+            onRequestDeleteBoard = { board ->
+                pendingDeleteBoard = board
+            }
+        )
+    }
+}
 
 @Composable
 private fun FilterSegmentedRow(
@@ -587,7 +662,6 @@ private fun MagnetCard(
 ) {
     val scope = rememberCoroutineScope()
 
-    // ひっくり返し（元のアニメに戻す：タップ時だけ animateTo / 状態追従は snapTo）
     val flipRotation = remember(item.id) { Animatable(if (item.inStock) 0f else 180f) }
 
     LaunchedEffect(item.inStock) {
@@ -602,7 +676,6 @@ private fun MagnetCard(
     val textColor = if (drawFront) stockText else outText
     val border = if (drawFront) BorderStroke(1.dp, stockBorder) else null
 
-    // 揺れ（弱め：±0.8f。Animatableで互換性重視）
     val wobbleZ = remember(item.id) { Animatable(0f) }
 
     LaunchedEffect(editMode, isDeleting) {
@@ -808,15 +881,18 @@ private fun BoardDrawerOverlay(
     open: Boolean,
     boards: List<Board>,
     currentBoardId: Long,
+    editMode: Boolean,
     onSelectBoard: (Long) -> Unit,
     onClose: () -> Unit,
-    onManageBoards: () -> Unit,
+    onEnterEdit: () -> Unit,
+    onExitEdit: () -> Unit,
+    onAddBoard: () -> Unit,
+    onRequestDeleteBoard: (Board) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
-    // アニメを Animatable で統一（環境差で animateFloatAsState 等が無くても動く）
     val scrim = remember { Animatable(0f) }
-    val panelX = remember { Animatable(-280f) } // dp相当（最後に dp に入れる）
+    val panelX = remember { Animatable(-280f) }
 
     LaunchedEffect(open) {
         if (open) {
@@ -828,7 +904,6 @@ private fun BoardDrawerOverlay(
         }
     }
 
-    // 透明でもタップを拾えるよう、scrimが完全に0になるまで描画
     if (open || scrim.value > 0f) {
         Box(
             modifier = Modifier
@@ -860,12 +935,27 @@ private fun BoardDrawerOverlay(
                         .statusBarsPadding()
                         .padding(top = 12.dp, bottom = 12.dp)
                 ) {
-                    Text(
-                        text = "ボード",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    // ヘッダー（右の設定ボタンは後ほど実装）
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ボード",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        IconButton(onClick = { /* TODO */ }) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "設定"
+                            )
+                        }
+                    }
 
                     LazyColumn(
                         modifier = Modifier.weight(1f)
@@ -874,24 +964,52 @@ private fun BoardDrawerOverlay(
                             val selected = b.id == currentBoardId
                             val bg = if (selected) Color(0xFFF3EDF7) else Color.Transparent
 
-                            Surface(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = bg,
-                                shape = RoundedCornerShape(12.dp),
-                                onClick = { onSelectBoard(b.id) }
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = bg,
+                                    shape = RoundedCornerShape(12.dp),
+                                    onClick = {
+                                        if (!editMode) {
+                                            onSelectBoard(b.id)
+                                        }
+                                    }
                                 ) {
-                                    Text(
-                                        text = b.name,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                                    ) {
+                                        Text(
+                                            text = b.name,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                            modifier = Modifier.align(Alignment.CenterStart)
+                                        )
+
+                                        if (editMode) {
+                                            IconButton(
+                                                onClick = { onRequestDeleteBoard(b) },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .size(28.dp)
+                                                    .offset(x = 6.dp, y = (-6).dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.White)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = "削除",
+                                                    tint = Color(0xFFB3261E)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -903,14 +1021,215 @@ private fun BoardDrawerOverlay(
                         color = DividerDefaults.color
                     )
 
+                    if (!editMode) {
+                        TextButton(
+                            onClick = { onEnterEdit() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("ボードを追加・編集")
+                        }
+                    } else {
+                        Button(
+                            onClick = { onAddBoard() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .height(44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF6750A4),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("ボードを追加")
+                        }
+
+                        TextButton(
+                            onClick = { onExitEdit() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "編集を終了",
+                                color = Color(0xFFB3261E),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BoardAddModal(
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+
+    fun attemptSave() {
+        val name = text.trim()
+        if (name.isEmpty()) {
+            showError = true
+            return
+        }
+        onSave(name)
+        text = ""
+        showError = false
+    }
+
+    Dialog(
+        onDismissRequest = { onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    IconButton(
+                        onClick = { onDismiss() },
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "閉じる")
+                    }
+
+                    Text(
+                        text = "ボードを追加",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        if (showError) {
+                            showError = it.trim().isEmpty()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("名前") },
+                    placeholder = { Text("名前を入力") },
+                    singleLine = true,
+                    isError = showError,
+                    trailingIcon = {
+                        if (text.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    text = ""
+                                    showError = true
+                                }
+                            ) {
+                                Icon(Icons.Filled.Clear, contentDescription = "クリア")
+                            }
+                        }
+                    },
+                    supportingText = {
+                        if (showError) {
+                            Text("入力してください")
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { attemptSave() })
+                )
+
+                Button(
+                    onClick = { attemptSave() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    enabled = text.trim().isNotEmpty(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF6750A4),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFF6750A4).copy(alpha = 0.40f),
+                        disabledContentColor = Color.White.copy(alpha = 0.80f)
+                    )
+                ) {
+                    Text("追加")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmBoardDeleteDialog(
+    boardName: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = { onCancel() },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "${boardName}を削除しますか？",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     TextButton(
-                        onClick = onManageBoards,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        onClick = { onCancel() },
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("ボードを追加・編集")
+                        Text("キャンセル")
+                    }
+
+                    Button(
+                        onClick = { onConfirm() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFB3261E),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("削除")
                     }
                 }
             }
