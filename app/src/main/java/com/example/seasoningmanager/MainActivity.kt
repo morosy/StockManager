@@ -34,6 +34,13 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.ui.draw.clip
 
+// Animation用
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
+
 data class Seasoning(
     val id: Long,
     val name: String,
@@ -434,23 +441,70 @@ private fun MagnetCard(
     outText: Color,
     onToggle: () -> Unit
 ) {
-    val bg = if (seasoning.inStock) stockBg else outBg
-    val textColor = if (seasoning.inStock) stockText else outText
-    val border = if (seasoning.inStock)
-        BorderStroke(1.dp, stockBorder)
-    else null
+    val scope = rememberCoroutineScope()
+    // 0f = 表 / 180f = 裏
+    val rotation = remember(seasoning.id) { Animatable(0f) }
+    var showingFront by remember(seasoning.id) { mutableStateOf(seasoning.inStock) }
+    // 外部の状態更新（items更新）に追従
+    LaunchedEffect(seasoning.inStock) {
+        showingFront = seasoning.inStock
+        // 状態に応じて角度も合わせる（急に切り替わらないように）
+        val target = if (seasoning.inStock) 0f else 180f
+        if (kotlin.math.abs(rotation.value - target) > 1f) {
+            rotation.snapTo(target)
+        }
+    }
+    // 「今どちら面を描画するか」は角度で決める
+    val drawFront = rotation.value <= 90f
+    val bg = if (drawFront) stockBg else outBg
+    val textColor = if (drawFront) stockText else outText
+    val border = if (drawFront) BorderStroke(1.dp, stockBorder) else null
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clickable { onToggle() },
+            .graphicsLayer {
+                rotationY = rotation.value
+                cameraDistance = 16f * density
+            }
+            .clickable {
+                scope.launch {
+                    // 1) 0->180 or 180->0 へ回す
+                    val goingToBack = rotation.value < 90f
+                    val target = if (goingToBack) 180f else 0f
+
+                    rotation.animateTo(
+                        targetValue = target,
+                        // 回転速度
+                        animationSpec = tween(durationMillis = 700)
+                    )
+
+                    // 2) アニメーション完了後に状態反転（DB/状態を更新）
+                    //    表裏の「意味」＝在庫/欠品なので、回った後に確定で切り替える
+                    onToggle()
+                }
+            },
         shape = RoundedCornerShape(12.dp),
         color = bg,
         border = border
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(seasoning.name, color = textColor)
+        // 90°超えると鏡文字になるので、裏面はさらに180°回して正しい向きにする
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (!drawFront) {
+                        rotationY = 180f
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = seasoning.name,
+                color = textColor,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
