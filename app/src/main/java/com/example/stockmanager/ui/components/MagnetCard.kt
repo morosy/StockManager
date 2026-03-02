@@ -35,14 +35,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.stockmanager.model.StockItem
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+import com.example.stockmanager.data.db.StockItemEntity
+
 @Composable
 fun MagnetCard(
-    item: StockItem,
+    item: StockItemEntity,
     stockBg: Color,
     stockText: Color,
     stockBorder: Color,

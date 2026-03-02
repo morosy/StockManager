@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,30 +33,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import com.example.stockmanager.data.StockManagerLocalStore
-import com.example.stockmanager.model.Board
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stockmanager.model.SortMode
-import com.example.stockmanager.model.StockItem
 import com.example.stockmanager.ui.components.FilterSegmentedRow
 import com.example.stockmanager.ui.components.MagnetCard
 import com.example.stockmanager.ui.components.SortSplitButton
@@ -66,13 +56,15 @@ import com.example.stockmanager.ui.overlay.BoardAddModal
 import com.example.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.example.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StockManagerScreen() {
+fun StockManagerScreen(
+    viewModel: StockManagerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
     val appBg = Color(0xFFF5F5F5)
     val stockBg = Color.White
     val stockText = Color(0xFF1C1B1F)
@@ -80,232 +72,67 @@ fun StockManagerScreen() {
     val outBg = Color(0xFFF9DEDC)
     val outText = Color(0xFFB3261E)
 
-    var boards by remember {
-        mutableStateOf(
-            listOf(
-                Board(
-                    id = 1L,
-                    name = "Home",
-                    items = listOf(
-                        StockItem(1, "しょうゆ", true, 1_000L),
-                        StockItem(2, "塩", true, 2_000L),
-                        StockItem(3, "こしょう", false, 3_000L),
-                        StockItem(4, "みりん", true, 4_000L),
-                    )
-                ),
-                Board(
-                    id = 2L,
-                    name = "Board 2",
-                    items = listOf(
-                        StockItem(1, "みそ", true, 1_000L),
-                        StockItem(2, "料理酒", true, 2_000L),
-                    )
-                ),
-            )
-        )
-    }
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var currentBoardId by remember { mutableStateOf(1L) }
-
-    fun currentBoard(): Board = boards.first { it.id == currentBoardId }
-    fun currentItems(): List<StockItem> = currentBoard().items
-
-    fun updateItems(newItems: List<StockItem>) {
-        boards = boards.map { b ->
-            if (b.id == currentBoardId) {
-                b.copy(items = newItems)
-            } else {
-                b
-            }
-        }
-    }
-
-    var showStock by remember { mutableStateOf(true) }
-    var showOut by remember { mutableStateOf(true) }
-    var sortMode by remember { mutableStateOf(SortMode.OLDEST) }
+    // UIローカル状態（永続化不要）
     var sortMenuOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
     var addItemModalOpen by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
 
+    // 削除アニメ中ID（UIだけ）
     val deletingIds = remember { mutableStateListOf<Long>() }
-    val scope = rememberCoroutineScope()
+    var pendingDeleteItemId by remember { mutableStateOf<Long?>(null) }
 
+    // ボードメニュー
     var drawerOpen by remember { mutableStateOf(false) }
     var boardEditMode by remember { mutableStateOf(false) }
     var boardAddModalOpen by remember { mutableStateOf(false) }
-    var pendingDeleteBoard by remember { mutableStateOf<Board?>(null) }
+    var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
+    var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
 
-    val context = LocalContext.current
-    val store = remember { StockManagerLocalStore(context) }
-    var persistenceReady by remember { mutableStateOf(false) }
+    val currentBoard = ui.boards.firstOrNull { it.board.id == ui.currentBoardId }
+    val currentBoardName = currentBoard?.board?.name ?: "..."
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    // 最新値を常に参照できるようにして、LifecycleObserver側で“古いstate”を掴まない
-    val latestBoardsState = rememberUpdatedState(boards)
-    val latestCurrentBoardIdState = rememberUpdatedState(currentBoardId)
-
-    // 起動時ロード
-    LaunchedEffect(Unit) {
-        val loaded = store.load()
-        if (loaded != null && loaded.boards.isNotEmpty()) {
-            boards = loaded.boards
-            currentBoardId = loaded.currentBoardId
-            if (boards.none { it.id == currentBoardId }) {
-                currentBoardId = boards.first().id
-            }
-        } else {
-            if (boards.none { it.id == currentBoardId }) {
-                currentBoardId = boards.first().id
-            }
-        }
-        persistenceReady = true
-    }
-
-    // 普段の保存（debounce + distinct）
-    LaunchedEffect(persistenceReady) {
-        if (!persistenceReady) {
-            return@LaunchedEffect
-        }
-
-        snapshotFlow { latestBoardsState.value to latestCurrentBoardIdState.value }
-            .debounce(500)
-            .distinctUntilChanged()
-            .collect { (b, curId) ->
-                val safeCurId =
-                    if (b.any { it.id == curId }) curId else (b.firstOrNull()?.id ?: 1L)
-
-                store.save(
-                    StockManagerLocalStore.PersistedState(
-                        currentBoardId = safeCurId,
-                        boards = b
-                    )
-                )
-            }
-    }
-
-    DisposableEffect(lifecycleOwner, persistenceReady) {
-        if (!persistenceReady) {
-            return@DisposableEffect onDispose { }
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                scope.launch {
-                    val b = latestBoardsState.value
-                    val curId = latestCurrentBoardIdState.value
-                    val safeCurId =
-                        if (b.any { it.id == curId }) curId else (b.firstOrNull()?.id ?: 1L)
-                    store.save(
-                        StockManagerLocalStore.PersistedState(
-                            currentBoardId = safeCurId,
-                            boards = b
-                        )
-                    )
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    fun toggleStock() {
-        when {
-            showStock && !showOut -> {
-                showStock = false
-                showOut = true
-            }
-            showStock && showOut -> {
-                showStock = false
-            }
-            else -> {
-                showStock = true
-            }
-        }
-    }
-
-    fun toggleOut() {
-        when {
-            !showStock && showOut -> {
-                showOut = false
-                showStock = true
-            }
-            showStock && showOut -> {
-                showOut = false
-            }
-            else -> {
-                showOut = true
-            }
-        }
-    }
-
-    fun requestDeleteItem(id: Long) {
-        if (deletingIds.contains(id)) {
-            return
-        }
-        deletingIds.add(id)
-
-        scope.launch {
-            delay(220)
-            val newItems = currentItems().filterNot { it.id == id }
-            updateItems(newItems)
-            deletingIds.remove(id)
-        }
-    }
-
-    fun addBoard(name: String) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) {
-            return
-        }
-        val nextId = (boards.maxOfOrNull { it.id } ?: 0L) + 1L
-        boards = boards + Board(
-            id = nextId,
-            name = trimmed,
-            items = emptyList()
-        )
-    }
-
-    fun deleteBoard(boardId: Long) {
-        val remaining = boards.filterNot { it.id == boardId }
-        if (remaining.isEmpty()) {
-            return
-        }
-
-        boards = remaining
-
-        if (currentBoardId == boardId) {
-            currentBoardId = remaining.first().id
-        }
-    }
+    val currentItems = currentBoard?.items ?: emptyList()
 
     val filteredSortedItems = remember(
-        boards,
-        currentBoardId,
-        showStock,
-        showOut,
-        sortMode,
-        query
+        currentItems,
+        ui.showStock,
+        ui.showOut,
+        ui.sortMode,
+        ui.query
     ) {
-        val q = query.trim()
-        val items = currentItems()
+        val q = ui.query.trim()
 
-        val filtered = items.filter { it ->
-            val passStock = (it.inStock && showStock) || (!it.inStock && showOut)
+        val filtered = currentItems.filter { it ->
+            val passStock = (it.inStock && ui.showStock) || (!it.inStock && ui.showOut)
             val passQuery = q.isEmpty() || it.name.contains(q, ignoreCase = true)
             passStock && passQuery
         }
 
-        when (sortMode) {
+        when (ui.sortMode) {
             SortMode.OLDEST -> filtered.sortedBy { it.createdAt }
             SortMode.NEWEST -> filtered.sortedByDescending { it.createdAt }
             SortMode.NAME -> filtered.sortedBy { it.name }
             SortMode.STOCK_FIRST -> filtered.sortedWith(compareBy({ !it.inStock }, { it.name }))
             SortMode.OUT_FIRST -> filtered.sortedWith(compareBy({ it.inStock }, { it.name }))
         }
+    }
+    fun requestDeleteItem(itemId: Long) {
+        if (deletingIds.contains(itemId)) {
+            return
+        }
+        deletingIds.add(itemId)
+        pendingDeleteItemId = itemId
+    }
+
+    LaunchedEffect(pendingDeleteItemId) {
+        val id = pendingDeleteItemId ?: return@LaunchedEffect
+        kotlinx.coroutines.delay(220)
+        viewModel.deleteItem(id)
+        deletingIds.remove(id)
+        pendingDeleteItemId = null
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -326,7 +153,7 @@ fun StockManagerScreen() {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = currentBoard().name,
+                                        text = currentBoardName,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -366,18 +193,18 @@ fun StockManagerScreen() {
                     ) {
                         FilterSegmentedRow(
                             modifier = Modifier.weight(1.3f),
-                            showStock = showStock,
-                            showOut = showOut,
-                            onStockClick = { toggleStock() },
-                            onOutClick = { toggleOut() }
+                            showStock = ui.showStock,
+                            showOut = ui.showOut,
+                            onStockClick = { viewModel.toggleStock() },
+                            onOutClick = { viewModel.toggleOut() }
                         )
                         SortSplitButton(
                             modifier = Modifier.weight(1f),
-                            label = sortMode.label,
+                            label = ui.sortMode.label,
                             menuOpen = sortMenuOpen,
                             onMenuOpenChange = { sortMenuOpen = it },
                             onSelect = {
-                                sortMode = it
+                                viewModel.setSortMode(it)
                                 sortMenuOpen = false
                             }
                         )
@@ -385,8 +212,8 @@ fun StockManagerScreen() {
 
                     if (searchOpen) {
                         OutlinedTextField(
-                            value = query,
-                            onValueChange = { query = it },
+                            value = ui.query,
+                            onValueChange = { viewModel.setQuery(it) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
@@ -424,15 +251,7 @@ fun StockManagerScreen() {
                                 if (editMode) {
                                     return@MagnetCard
                                 }
-                                val itemsNow = currentItems()
-                                val newItems = itemsNow.map { now ->
-                                    if (now.id == item.id) {
-                                        now.copy(inStock = !now.inStock)
-                                    } else {
-                                        now
-                                    }
-                                }
-                                updateItems(newItems)
+                                viewModel.toggleItem(item)
                             },
                             onDelete = { requestDeleteItem(item.id) }
                         )
@@ -443,10 +262,10 @@ fun StockManagerScreen() {
                     AddItemModal(
                         onDismiss = { addItemModalOpen = false },
                         onSave = { name ->
-                            val now = System.currentTimeMillis()
-                            val itemsNow = currentItems()
-                            val nextId = (itemsNow.maxOfOrNull { it.id } ?: 0L) + 1L
-                            updateItems(itemsNow + StockItem(nextId, name, true, now))
+                            val boardId = ui.currentBoardId
+                            if (boardId != 0L) {
+                                viewModel.addItem(boardId, name)
+                            }
                             addItemModalOpen = false
                         }
                     )
@@ -493,32 +312,34 @@ fun StockManagerScreen() {
             BoardAddModal(
                 onDismiss = { boardAddModalOpen = false },
                 onSave = { name ->
-                    addBoard(name)
+                    viewModel.addBoard(name)
                     boardAddModalOpen = false
                 }
             )
         }
 
-        pendingDeleteBoard?.let { target ->
+        if (pendingDeleteBoardId != null && pendingDeleteBoardName != null) {
             ConfirmBoardDeleteDialog(
-                boardName = target.name,
+                boardName = pendingDeleteBoardName!!,
                 onConfirm = {
-                    deleteBoard(target.id)
-                    pendingDeleteBoard = null
+                    viewModel.deleteBoard(pendingDeleteBoardId!!)
+                    pendingDeleteBoardId = null
+                    pendingDeleteBoardName = null
                 },
                 onCancel = {
-                    pendingDeleteBoard = null
+                    pendingDeleteBoardId = null
+                    pendingDeleteBoardName = null
                 }
             )
         }
 
         BoardDrawerOverlay(
             open = drawerOpen,
-            boards = boards,
-            currentBoardId = currentBoardId,
+            boards = ui.boards.map { it.board }, // overlayは Board(model) じゃなく BoardEntity 相当を想定
+            currentBoardId = ui.currentBoardId,
             editMode = boardEditMode,
             onSelectBoard = { id ->
-                currentBoardId = id
+                viewModel.selectBoard(id)
                 drawerOpen = false
             },
             onClose = {
@@ -529,7 +350,8 @@ fun StockManagerScreen() {
             onExitEdit = { boardEditMode = false },
             onAddBoard = { boardAddModalOpen = true },
             onRequestDeleteBoard = { board ->
-                pendingDeleteBoard = board
+                pendingDeleteBoardId = board.id
+                pendingDeleteBoardName = board.name
             }
         )
     }
