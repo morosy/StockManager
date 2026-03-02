@@ -7,11 +7,10 @@ import com.example.stockmanager.data.db.SettingsEntity
 import com.example.stockmanager.data.db.StockItemEntity
 import kotlinx.coroutines.flow.Flow
 
-class StockRepository(
-    private val db: AppDatabase
-) {
+class StockRepository(private val db: AppDatabase) {
     private val stockDao = db.stockDao()
     private val settingsDao = db.settingsDao()
+    private val boardDao = db.boardDao()
 
     fun observeBoardsWithItems(): Flow<List<BoardWithItems>> {
         return stockDao.observeBoardsWithItems()
@@ -25,6 +24,10 @@ class StockRepository(
         settingsDao.upsert(SettingsEntity(id = 0, currentBoardId = boardId))
     }
 
+    suspend fun updateBoardOrders(orderedIds: List<Long>) {
+        boardDao.updateBoardOrders(orderedIds)
+    }
+
     suspend fun ensureSeeded() {
         if (stockDao.countBoards() > 0) {
             return
@@ -32,8 +35,8 @@ class StockRepository(
 
         val now = System.currentTimeMillis()
 
-        val homeId = stockDao.insertBoard(BoardEntity(name = "Home"))
-        val board2Id = stockDao.insertBoard(BoardEntity(name = "Board 2"))
+        val homeId = stockDao.insertBoard(BoardEntity(name = "Home", sortOrder = 0))
+        val board2Id = stockDao.insertBoard(BoardEntity(name = "Board 2", sortOrder = 1))
 
         stockDao.insertItem(StockItemEntity(boardId = homeId, name = "しょうゆ", inStock = true, createdAt = now + 1))
         stockDao.insertItem(StockItemEntity(boardId = homeId, name = "塩", inStock = true, createdAt = now + 2))
@@ -47,7 +50,9 @@ class StockRepository(
     }
 
     suspend fun addBoard(name: String): Long {
-        return stockDao.insertBoard(BoardEntity(name = name))
+        // 追加時の sortOrder を末尾にする（簡易）
+        val nextOrder = stockDao.countBoards()
+        return stockDao.insertBoard(BoardEntity(name = name, sortOrder = nextOrder))
     }
 
     suspend fun deleteBoard(boardId: Long) {
@@ -78,5 +83,4 @@ class StockRepository(
         val current = settingsDao.getOnce() ?: SettingsEntity()
         settingsDao.upsert(transform(current))
     }
-
 }

@@ -141,4 +141,10 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
             repo.deleteItem(itemId)
         }
     }
+
+    fun reorderBoards(orderedIds: List<Long>) {
+        viewModelScope.launch {
+            repo.updateBoardOrders(orderedIds)
+        }
+    }
 }

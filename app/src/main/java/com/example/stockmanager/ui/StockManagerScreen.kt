@@ -352,7 +352,8 @@ fun StockManagerScreen(
             onRequestDeleteBoard = { board ->
                 pendingDeleteBoardId = board.id
                 pendingDeleteBoardName = board.name
-            }
+            },
+            onReorderBoards = { ids -> viewModel.reorderBoards(ids) }
         )
     }
 }

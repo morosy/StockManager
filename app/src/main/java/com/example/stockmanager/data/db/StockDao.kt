@@ -15,7 +15,7 @@ interface StockDao {
     fun observeBoards(): Flow<List<BoardEntity>>
 
     @Transaction
-    @Query("SELECT * FROM boards ORDER BY id ASC")
+    @Query("SELECT * FROM boards ORDER BY sort_order ASC, id ASC")
     fun observeBoardsWithItems(): Flow<List<BoardWithItems>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
