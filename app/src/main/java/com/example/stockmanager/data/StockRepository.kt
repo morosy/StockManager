@@ -18,7 +18,7 @@ class StockRepository(
     }
 
     fun observeSettings(): Flow<SettingsEntity?> {
-        return settingsDao.observeSettings()
+        return settingsDao.observe()
     }
 
     suspend fun setCurrentBoardId(boardId: Long) {
@@ -73,4 +73,10 @@ class StockRepository(
     suspend fun deleteItem(itemId: Long) {
         stockDao.deleteItemById(itemId)
     }
+
+    suspend fun updateSettings(transform: (SettingsEntity) -> SettingsEntity) {
+        val current = settingsDao.getOnce() ?: SettingsEntity()
+        settingsDao.upsert(transform(current))
+    }
+
 }

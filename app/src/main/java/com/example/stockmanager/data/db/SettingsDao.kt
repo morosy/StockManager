@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SettingsDao {
     @Query("SELECT * FROM settings WHERE id = 0")
-    fun observeSettings(): Flow<SettingsEntity?>
+    fun observe(): Flow<SettingsEntity?>
+
+    @Query("SELECT * FROM settings WHERE id = 0")
+    suspend fun getOnce(): SettingsEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(settings: SettingsEntity)
+    suspend fun upsert(entity: SettingsEntity)
 }

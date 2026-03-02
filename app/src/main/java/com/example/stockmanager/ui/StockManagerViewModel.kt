@@ -9,10 +9,8 @@ import com.example.stockmanager.data.db.BoardWithItems
 import com.example.stockmanager.data.db.SettingsEntity
 import com.example.stockmanager.data.db.StockItemEntity
 import com.example.stockmanager.model.SortMode
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,48 +28,26 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = StockRepository(AppDatabase.getInstance(app))
 
-    private val showStock = MutableStateFlow(true)
-    private val showOut = MutableStateFlow(true)
-    private val sortMode = MutableStateFlow(SortMode.OLDEST)
-    private val query = MutableStateFlow("")
-
-    private val boardsFlow: Flow<List<BoardWithItems>> = repo.observeBoardsWithItems()
-    private val settingsFlow: Flow<SettingsEntity?> = repo.observeSettings()
+    private val boardsFlow = repo.observeBoardsWithItems()
+    private val settingsFlow = repo.observeSettings() // Flow<SettingsEntity?>
 
     val uiState: StateFlow<StockManagerUiState> =
-        combine(
-            boardsFlow,
-            settingsFlow,
-            showStock,
-            showOut,
-            sortMode,
-            query
-        ) { values: Array<Any?> ->
+        combine(boardsFlow, settingsFlow) { boards, settings ->
+            val s = settings ?: SettingsEntity()
 
-            @Suppress("UNCHECKED_CAST")
-            val boards = values[0] as List<BoardWithItems>
-
-            val settings = values[1] as SettingsEntity?
-            val stock = values[2] as Boolean
-            val out = values[3] as Boolean
-            val sort = values[4] as SortMode
-            val q = values[5] as String
-
-            val preferredId: Long? = settings?.currentBoardId
-
-            val safeCurrentId: Long = when {
+            val safeCurrentId = when {
                 boards.isEmpty() -> 0L
-                preferredId != null && boards.any { it.board.id == preferredId } -> preferredId
+                s.currentBoardId != null && boards.any { it.board.id == s.currentBoardId } -> s.currentBoardId
                 else -> boards.first().board.id
-            }
+            } ?: 0L
 
             StockManagerUiState(
                 boards = boards,
                 currentBoardId = safeCurrentId,
-                showStock = stock,
-                showOut = out,
-                sortMode = sort,
-                query = q
+                showStock = s.showStock,
+                showOut = s.showOut,
+                sortMode = SortMode.valueOf(s.sortMode),
+                query = s.query
             )
         }.stateIn(
             scope = viewModelScope,
@@ -86,52 +62,40 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setQuery(value: String) {
-        query.value = value
+        viewModelScope.launch {
+            repo.updateSettings { it.copy(query = value) }
+        }
     }
 
     fun setSortMode(mode: SortMode) {
-        sortMode.value = mode
+        viewModelScope.launch {
+            repo.updateSettings { it.copy(sortMode = mode.name) }
+        }
     }
 
     fun toggleStock() {
-        val s = showStock.value
-        val o = showOut.value
-
-        when {
-            s && !o -> {
-                showStock.value = false
-                showOut.value = true
-            }
-            s && o -> {
-                showStock.value = false
-            }
-            else -> {
-                showStock.value = true
+        viewModelScope.launch {
+            repo.updateSettings { s ->
+                val nextShowStock = !s.showStock
+                val nextShowOut = if (!nextShowStock && !s.showOut) true else s.showOut
+                s.copy(showStock = nextShowStock, showOut = nextShowOut)
             }
         }
     }
 
     fun toggleOut() {
-        val s = showStock.value
-        val o = showOut.value
-
-        when {
-            !s && o -> {
-                showOut.value = false
-                showStock.value = true
-            }
-            s && o -> {
-                showOut.value = false
-            }
-            else -> {
-                showOut.value = true
+        viewModelScope.launch {
+            repo.updateSettings { s ->
+                val nextShowOut = !s.showOut
+                val nextShowStock = if (!nextShowOut && !s.showStock) true else s.showStock
+                s.copy(showOut = nextShowOut, showStock = nextShowStock)
             }
         }
     }
 
     fun selectBoard(boardId: Long) {
         viewModelScope.launch {
-            repo.setCurrentBoardId(boardId)
+            repo.updateSettings { it.copy(currentBoardId = boardId) }
         }
     }
 
@@ -142,8 +106,12 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             val id = repo.addBoard(trimmed)
-            repo.setCurrentBoardId(id)
+            repo.updateSettings { it.copy(currentBoardId = id) }
         }
+    }
+
+    fun renameBoard(boardId: Long, newName: String) {
+        // TODO
     }
 
     fun deleteBoard(boardId: Long) {
