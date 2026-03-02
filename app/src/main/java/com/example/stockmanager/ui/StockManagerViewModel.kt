@@ -1,8 +1,10 @@
-package com.example.stockmanager.ui
+﻿package com.example.stockmanager.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.stockmanager.data.BoardTransferFormat
+import com.example.stockmanager.data.ExportPayload
 import com.example.stockmanager.data.StockRepository
 import com.example.stockmanager.data.db.AppDatabase
 import com.example.stockmanager.data.db.BoardWithItems
@@ -29,7 +31,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = StockRepository(AppDatabase.getInstance(app))
 
     private val boardsFlow = repo.observeBoardsWithItems()
-    private val settingsFlow = repo.observeSettings() // Flow<SettingsEntity?>
+    private val settingsFlow = repo.observeSettings()
 
     val uiState: StateFlow<StockManagerUiState> =
         combine(boardsFlow, settingsFlow) { boards, settings ->
@@ -110,10 +112,6 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun renameBoard(boardId: Long, newName: String) {
-        // TODO
-    }
-
     fun deleteBoard(boardId: Long) {
         viewModelScope.launch {
             repo.deleteBoard(boardId)
@@ -145,6 +143,43 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     fun reorderBoards(orderedIds: List<Long>) {
         viewModelScope.launch {
             repo.updateBoardOrders(orderedIds)
+        }
+    }
+
+    fun renameBoard(boardId: Long, newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) {
+            return
+        }
+        viewModelScope.launch {
+            repo.renameBoard(boardId, trimmed)
+        }
+    }
+
+    fun exportCurrentBoard(format: BoardTransferFormat, onResult: (Result<ExportPayload>) -> Unit) {
+        val boardId = uiState.value.currentBoardId
+        if (boardId == 0L) {
+            onResult(Result.failure(IllegalStateException("ボードが選択されていません")))
+            return
+        }
+
+        viewModelScope.launch {
+            val payload = repo.buildBoardExport(boardId, format)
+            if (payload == null) {
+                onResult(Result.failure(IllegalStateException("エクスポート対象のボードが見つかりません")))
+            } else {
+                onResult(Result.success(payload))
+            }
+        }
+    }
+
+    fun importBoard(content: String, format: BoardTransferFormat?, onResult: (Result<Long>) -> Unit) {
+        viewModelScope.launch {
+            val result = repo.importBoard(content, format)
+            result.onSuccess { newBoardId ->
+                repo.updateSettings { it.copy(currentBoardId = newBoardId) }
+            }
+            onResult(result)
         }
     }
 }

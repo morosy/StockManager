@@ -1,4 +1,4 @@
-package com.example.stockmanager.ui.overlay
+﻿package com.example.stockmanager.ui.overlay
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -67,7 +70,10 @@ fun BoardDrawerOverlay(
     onExitEdit: () -> Unit,
     onAddBoard: () -> Unit,
     onRequestDeleteBoard: (BoardEntity) -> Unit,
-    onReorderBoards: (List<Long>) -> Unit, // ★追加
+    onExportBoardJson: () -> Unit,
+    onExportBoardCsv: () -> Unit,
+    onImportBoard: () -> Unit,
+    onReorderBoards: (List<Long>) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -84,7 +90,6 @@ fun BoardDrawerOverlay(
         }
     }
 
-    // editMode中だけローカル並び替え用リストを使う
     val localBoards = remember { mutableStateListOf<BoardEntity>() }
     LaunchedEffect(editMode, boards) {
         localBoards.clear()
@@ -92,9 +97,8 @@ fun BoardDrawerOverlay(
     }
 
     val listState = rememberLazyListState()
-
-    // 最新のコールバックを掴む
     val onReorderBoardsLatest = rememberUpdatedState(onReorderBoards)
+    val menuOpen = remember { mutableStateOf(false) }
 
     if (open || scrim.value > 0f) {
         Box(
@@ -140,11 +144,39 @@ fun BoardDrawerOverlay(
                             modifier = Modifier.weight(1f)
                         )
 
-                        IconButton(onClick = { /* TODO */ }) {
-                            Icon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = "設定"
-                            )
+                        Box {
+                            IconButton(onClick = { menuOpen.value = true }) {
+                                Icon(
+                                    imageVector = Icons.Filled.MoreVert,
+                                    contentDescription = "メニュー"
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuOpen.value,
+                                onDismissRequest = { menuOpen.value = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("このボードをエクスポート") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onExportBoardJson()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("このボードをエクスポート(CSV)") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onExportBoardCsv()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("ボードをインポート") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onImportBoard()
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -173,7 +205,6 @@ fun BoardDrawerOverlay(
                                         }
                                     }
                                 ) {
-                                    // 1行レイアウト：左=ハンドル(編集時のみ) / 中=ボード名(中央揃え) / 右=削除(編集時のみ)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -182,7 +213,6 @@ fun BoardDrawerOverlay(
                                     ) {
 
                                         if (editMode) {
-                                            // ドラッグハンドル（≡）
                                             Box(
                                                 modifier = Modifier
                                                     .size(28.dp)
@@ -191,22 +221,16 @@ fun BoardDrawerOverlay(
                                                     .pointerInput(b.id) {
                                                         detectDragGesturesAfterLongPress(
                                                             onDragEnd = {
-                                                                // 並び確定 → 永続化
                                                                 onReorderBoardsLatest.value(localBoards.map { it.id })
                                                             },
-                                                            onDragCancel = {
-                                                                // cancel時は何もしない（必要ならboardsで戻す）
-                                                            },
-                                                            onDrag = { change, dragAmount ->
+                                                            onDrag = { change, _ ->
                                                                 change.consume()
 
-                                                                // 現在アイテムのindex
                                                                 val fromIndex = localBoards.indexOfFirst { it.id == b.id }
                                                                 if (fromIndex < 0) {
                                                                     return@detectDragGesturesAfterLongPress
                                                                 }
 
-                                                                // どのindexの上にいるか判定（visibleItemsInfoから探す）
                                                                 val visible = listState.layoutInfo.visibleItemsInfo
                                                                 if (visible.isEmpty()) {
                                                                     return@detectDragGesturesAfterLongPress
@@ -224,7 +248,6 @@ fun BoardDrawerOverlay(
                                                                     return@detectDragGesturesAfterLongPress
                                                                 }
 
-                                                                // 入れ替え
                                                                 val moved = localBoards.removeAt(fromIndex)
                                                                 val insertIndex = toIndex.coerceIn(0, localBoards.size)
                                                                 localBoards.add(insertIndex, moved)
@@ -234,7 +257,7 @@ fun BoardDrawerOverlay(
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
-                                                    text = "≡",
+                                                    text = ":::",
                                                     color = Color(0xFF6750A4),
                                                     fontWeight = FontWeight.Bold
                                                 )
@@ -248,7 +271,7 @@ fun BoardDrawerOverlay(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                            textAlign = TextAlign.Center, // ★中央揃え
+                                            textAlign = TextAlign.Center,
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .padding(horizontal = 8.dp)
@@ -316,7 +339,7 @@ fun BoardDrawerOverlay(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = "編集を終了",
+                                text = "編集を完了",
                                 color = Color(0xFFB3261E),
                                 fontWeight = FontWeight.SemiBold
                             )

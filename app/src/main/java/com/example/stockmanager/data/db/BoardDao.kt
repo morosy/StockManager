@@ -16,4 +16,10 @@ interface BoardDao {
             updateSortOrder(id, index)
         }
     }
+
+    @Query("UPDATE boards SET name = :newName WHERE id = :boardId")
+    suspend fun renameBoard(boardId: Long, newName: String)
+
+    @Query("SELECT * FROM boards WHERE id = :boardId LIMIT 1")
+    suspend fun getBoardOnce(boardId: Long): BoardEntity?
 }

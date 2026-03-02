@@ -1,11 +1,16 @@
-package com.example.stockmanager.data
+﻿package com.example.stockmanager.data
 
+import androidx.room.withTransaction
 import com.example.stockmanager.data.db.AppDatabase
 import com.example.stockmanager.data.db.BoardEntity
 import com.example.stockmanager.data.db.BoardWithItems
 import com.example.stockmanager.data.db.SettingsEntity
 import com.example.stockmanager.data.db.StockItemEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class StockRepository(private val db: AppDatabase) {
     private val stockDao = db.stockDao()
@@ -35,24 +40,24 @@ class StockRepository(private val db: AppDatabase) {
 
         val now = System.currentTimeMillis()
 
-        val homeId = stockDao.insertBoard(BoardEntity(name = "Home", sortOrder = 0))
-        val board2Id = stockDao.insertBoard(BoardEntity(name = "Board 2", sortOrder = 1))
+        val homeId = stockDao.insertBoard(BoardEntity(name = "Home", createdAt = now, sortOrder = 0))
+        val board2Id = stockDao.insertBoard(BoardEntity(name = "Board 2", createdAt = now + 1, sortOrder = 1))
 
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "しょうゆ", inStock = true, createdAt = now + 1))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "塩", inStock = true, createdAt = now + 2))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "こしょう", inStock = false, createdAt = now + 3))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "みりん", inStock = true, createdAt = now + 4))
+        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "しょうゆ", inStock = true, createdAt = now + 1, updatedAt = now + 1))
+        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "塩", inStock = true, createdAt = now + 2, updatedAt = now + 2))
+        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "こしょう", inStock = false, createdAt = now + 3, updatedAt = now + 3))
+        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "みりん", inStock = true, createdAt = now + 4, updatedAt = now + 4))
 
-        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "みそ", inStock = true, createdAt = now + 5))
-        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "料理酒", inStock = true, createdAt = now + 6))
+        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "みそ", inStock = true, createdAt = now + 5, updatedAt = now + 5))
+        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "料理酒", inStock = true, createdAt = now + 6, updatedAt = now + 6))
 
         settingsDao.upsert(SettingsEntity(id = 0, currentBoardId = homeId))
     }
 
     suspend fun addBoard(name: String): Long {
-        // 追加時の sortOrder を末尾にする（簡易）
         val nextOrder = stockDao.countBoards()
-        return stockDao.insertBoard(BoardEntity(name = name, sortOrder = nextOrder))
+        val now = System.currentTimeMillis()
+        return stockDao.insertBoard(BoardEntity(name = name, createdAt = now, sortOrder = nextOrder))
     }
 
     suspend fun deleteBoard(boardId: Long) {
@@ -66,13 +71,14 @@ class StockRepository(private val db: AppDatabase) {
                 boardId = boardId,
                 name = name,
                 inStock = true,
-                createdAt = now
+                createdAt = now,
+                updatedAt = now
             )
         )
     }
 
     suspend fun toggleItem(item: StockItemEntity) {
-        stockDao.updateItem(item.copy(inStock = !item.inStock))
+        stockDao.updateItem(item.copy(inStock = !item.inStock, updatedAt = System.currentTimeMillis()))
     }
 
     suspend fun deleteItem(itemId: Long) {
@@ -82,5 +88,56 @@ class StockRepository(private val db: AppDatabase) {
     suspend fun updateSettings(transform: (SettingsEntity) -> SettingsEntity) {
         val current = settingsDao.getOnce() ?: SettingsEntity()
         settingsDao.upsert(transform(current))
+    }
+
+    suspend fun renameBoard(boardId: Long, newName: String) {
+        boardDao.renameBoard(boardId, newName)
+    }
+
+    suspend fun buildBoardExport(boardId: Long, format: BoardTransferFormat): ExportPayload? {
+        val boardWithItems = observeBoardsWithItems().first().firstOrNull { it.board.id == boardId } ?: return null
+        return BoardTransferCodec.exportBoard(boardWithItems, format)
+    }
+
+    suspend fun importBoard(content: String, requestedFormat: BoardTransferFormat?): Result<Long> = withContext(Dispatchers.IO) {
+        val decoded = BoardTransferCodec.import(content, requestedFormat).getOrElse {
+            return@withContext Result.failure(it)
+        }
+        val now = System.currentTimeMillis()
+        val trimmedBoardName = decoded.boardName.trim()
+        if (trimmedBoardName.isEmpty()) {
+            return@withContext Result.failure(IllegalArgumentException("board.name が空です"))
+        }
+
+        runCatching {
+            db.withTransaction {
+                val newBoardId = stockDao.insertBoard(
+                    BoardEntity(
+                        name = trimmedBoardName,
+                        createdAt = now,
+                        exportId = decoded.boardExportId ?: "b-${UUID.randomUUID()}",
+                        sortOrder = stockDao.countBoards()
+                    )
+                )
+
+                decoded.items.take(500).forEach { item ->
+                    val itemName = item.name.trim()
+                    if (itemName.isEmpty()) {
+                        return@forEach
+                    }
+                    stockDao.insertItem(
+                        StockItemEntity(
+                            boardId = newBoardId,
+                            name = itemName,
+                            inStock = item.inStock,
+                            createdAt = item.createdAt ?: now,
+                            updatedAt = item.updatedAt ?: now,
+                            exportId = item.exportId ?: "i-${UUID.randomUUID()}"
+                        )
+                    )
+                }
+                newBoardId
+            }
+        }
     }
 }

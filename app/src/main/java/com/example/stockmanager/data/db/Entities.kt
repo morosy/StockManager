@@ -12,6 +12,10 @@ data class BoardEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val name: String,
+    @ColumnInfo(name = "created_at")
+    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "export_id")
+    val exportId: String? = null,
     @ColumnInfo(name = "sort_order")
     val sortOrder: Int = 0
 )
@@ -43,7 +47,13 @@ data class StockItemEntity(
     val inStock: Boolean,
 
     @ColumnInfo(name = "created_at")
-    val createdAt: Long
+    val createdAt: Long,
+
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: Long = createdAt,
+
+    @ColumnInfo(name = "export_id")
+    val exportId: String? = null
 )
 
 // 二重定義になるためコメントアウト

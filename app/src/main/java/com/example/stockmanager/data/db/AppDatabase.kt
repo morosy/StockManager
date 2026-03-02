@@ -1,4 +1,4 @@
-package com.example.stockmanager.data.db
+﻿package com.example.stockmanager.data.db
 
 import android.content.Context
 import androidx.room.Database
@@ -13,13 +13,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StockItemEntity::class,
         SettingsEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun stockDao(): StockDao
     abstract fun settingsDao(): SettingsDao
-    abstract fun boardDao(): BoardDao // ★追加
+    abstract fun boardDao(): BoardDao
 
     companion object {
         @Volatile
@@ -31,6 +31,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                db.execSQL("ALTER TABLE boards ADD COLUMN created_at INTEGER NOT NULL DEFAULT $now")
+                db.execSQL("ALTER TABLE boards ADD COLUMN export_id TEXT")
+                db.execSQL("ALTER TABLE stock_items ADD COLUMN updated_at INTEGER NOT NULL DEFAULT $now")
+                db.execSQL("ALTER TABLE stock_items ADD COLUMN export_id TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -38,7 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "stockmanager.db"
                 )
-                    .addMigrations(MIGRATION_2_3) // ★重要
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                     .build()
 
                 INSTANCE = instance

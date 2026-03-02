@@ -1,5 +1,9 @@
-package com.example.stockmanager.ui
+﻿package com.example.stockmanager.ui
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +29,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,20 +38,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.stockmanager.data.BoardTransferFormat
+import com.example.stockmanager.data.ExportPayload
 import com.example.stockmanager.model.SortMode
 import com.example.stockmanager.ui.components.FilterSegmentedRow
 import com.example.stockmanager.ui.components.MagnetCard
@@ -55,10 +63,9 @@ import com.example.stockmanager.ui.modal.AddItemModal
 import com.example.stockmanager.ui.overlay.BoardAddModal
 import com.example.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.example.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
-import kotlinx.coroutines.delay
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.LaunchedEffect
-
+import com.example.stockmanager.ui.overlay.RenameBoardOverlay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,29 +79,97 @@ fun StockManagerScreen(
     val outBg = Color(0xFFF9DEDC)
     val outText = Color(0xFFB3261E)
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // UIローカル状態（永続化不要）
+    var renameOpen by remember { mutableStateOf(false) }
+    val currentBoardWithItems = ui.boards.firstOrNull { it.board.id == ui.currentBoardId }
+    val currentBoardEntity = currentBoardWithItems?.board
+    val currentBoardName = currentBoardEntity?.name ?: ""
+    val currentItems = currentBoardWithItems?.items ?: emptyList()
+
     var sortMenuOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
     var addItemModalOpen by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
 
-    // 削除アニメ中ID（UIだけ）
     val deletingIds = remember { mutableStateListOf<Long>() }
     var pendingDeleteItemId by remember { mutableStateOf<Long?>(null) }
 
-    // ボードメニュー
     var drawerOpen by remember { mutableStateOf(false) }
     var boardEditMode by remember { mutableStateOf(false) }
     var boardAddModalOpen by remember { mutableStateOf(false) }
     var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
 
-    val currentBoard = ui.boards.firstOrNull { it.board.id == ui.currentBoardId }
-    val currentBoardName = currentBoard?.board?.name ?: "..."
+    var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
 
-    val currentItems = currentBoard?.items ?: emptyList()
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        val payload = pendingExportPayload
+        pendingExportPayload = null
+
+        if (uri == null || payload == null) {
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(payload.content.toByteArray(Charsets.UTF_8))
+                } ?: error("出力ストリームを開けませんでした")
+            }.onSuccess {
+                launch(Dispatchers.Main) {
+                    Toast.makeText(context, "エクスポートしました", Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure { e ->
+                launch(Dispatchers.Main) {
+                    Toast.makeText(context, "エクスポート失敗: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    val openDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) {
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch(Dispatchers.IO) {
+            val text = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    ?: error("入力ストリームを開けませんでした")
+            }
+
+            text.onSuccess { content ->
+                val mimeType = context.contentResolver.getType(uri)
+                val fileName = uri.lastPathSegment.orEmpty()
+                val format = when {
+                    mimeType == "application/json" -> BoardTransferFormat.JSON
+                    mimeType == "text/csv" -> BoardTransferFormat.CSV
+                    fileName.endsWith(".json", ignoreCase = true) -> BoardTransferFormat.JSON
+                    fileName.endsWith(".csv", ignoreCase = true) -> BoardTransferFormat.CSV
+                    else -> null
+                }
+                viewModel.importBoard(content, format) { result ->
+                    result.onSuccess {
+                        Toast.makeText(context, "ボードをインポートしました", Toast.LENGTH_SHORT).show()
+                    }.onFailure { e ->
+                        Toast.makeText(context, "インポート失敗: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }.onFailure { e ->
+                launch(Dispatchers.Main) {
+                    Toast.makeText(context, "ファイル読み込み失敗: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     val filteredSortedItems = remember(
         currentItems,
@@ -105,9 +180,9 @@ fun StockManagerScreen(
     ) {
         val q = ui.query.trim()
 
-        val filtered = currentItems.filter { it ->
-            val passStock = (it.inStock && ui.showStock) || (!it.inStock && ui.showOut)
-            val passQuery = q.isEmpty() || it.name.contains(q, ignoreCase = true)
+        val filtered = currentItems.filter { item ->
+            val passStock = (item.inStock && ui.showStock) || (!item.inStock && ui.showOut)
+            val passQuery = q.isEmpty() || item.name.contains(q, ignoreCase = true)
             passStock && passQuery
         }
 
@@ -119,12 +194,24 @@ fun StockManagerScreen(
             SortMode.OUT_FIRST -> filtered.sortedWith(compareBy({ it.inStock }, { it.name }))
         }
     }
+
     fun requestDeleteItem(itemId: Long) {
         if (deletingIds.contains(itemId)) {
             return
         }
         deletingIds.add(itemId)
         pendingDeleteItemId = itemId
+    }
+
+    fun runExport(format: BoardTransferFormat) {
+        viewModel.exportCurrentBoard(format) { result ->
+            result.onSuccess { payload ->
+                pendingExportPayload = payload
+                createDocumentLauncher.launch(payload.fileName)
+            }.onFailure { e ->
+                Toast.makeText(context, "エクスポート失敗: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     LaunchedEffect(pendingDeleteItemId) {
@@ -154,6 +241,9 @@ fun StockManagerScreen(
                                 ) {
                                     Text(
                                         text = currentBoardName,
+                                        modifier = Modifier.clickable(enabled = currentBoardEntity != null) {
+                                            renameOpen = true
+                                        },
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -248,10 +338,9 @@ fun StockManagerScreen(
                             editMode = editMode,
                             isDeleting = deletingIds.contains(item.id),
                             onToggle = {
-                                if (editMode) {
-                                    return@MagnetCard
+                                if (!editMode) {
+                                    viewModel.toggleItem(item)
                                 }
-                                viewModel.toggleItem(item)
                             },
                             onDelete = { requestDeleteItem(item.id) }
                         )
@@ -335,7 +424,7 @@ fun StockManagerScreen(
 
         BoardDrawerOverlay(
             open = drawerOpen,
-            boards = ui.boards.map { it.board }, // overlayは Board(model) じゃなく BoardEntity 相当を想定
+            boards = ui.boards.map { it.board },
             currentBoardId = ui.currentBoardId,
             editMode = boardEditMode,
             onSelectBoard = { id ->
@@ -353,7 +442,28 @@ fun StockManagerScreen(
                 pendingDeleteBoardId = board.id
                 pendingDeleteBoardName = board.name
             },
+            onExportBoardJson = { runExport(BoardTransferFormat.JSON) },
+            onExportBoardCsv = { runExport(BoardTransferFormat.CSV) },
+            onImportBoard = {
+                openDocumentLauncher.launch(
+                    arrayOf(
+                        "application/json",
+                        "text/csv",
+                        "text/comma-separated-values"
+                    )
+                )
+            },
             onReorderBoards = { ids -> viewModel.reorderBoards(ids) }
+        )
+
+        RenameBoardOverlay(
+            open = renameOpen,
+            initialName = currentBoardName,
+            onDismiss = { renameOpen = false },
+            onRename = { newName ->
+                currentBoardEntity?.let { viewModel.renameBoard(it.id, newName) }
+                renameOpen = false
+            }
         )
     }
 }
