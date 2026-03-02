@@ -1,4 +1,4 @@
-package com.example.seasoningmanager.ui.theme
+package com.example.stockmanager.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

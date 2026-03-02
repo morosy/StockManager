@@ -46,13 +46,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.example.stockmanager.model.Board
 import kotlinx.coroutines.launch
+import com.example.stockmanager.data.db.BoardEntity
 
 @Composable
 fun BoardDrawerOverlay(
     open: Boolean,
-    boards: List<Board>,
+    boards: List<BoardEntity>,
     currentBoardId: Long,
     editMode: Boolean,
     onSelectBoard: (Long) -> Unit,
@@ -60,7 +60,7 @@ fun BoardDrawerOverlay(
     onEnterEdit: () -> Unit,
     onExitEdit: () -> Unit,
     onAddBoard: () -> Unit,
-    onRequestDeleteBoard: (Board) -> Unit,
+    onRequestDeleteBoard: (BoardEntity) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
