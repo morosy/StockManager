@@ -1004,3 +1004,89 @@ enum class FilterMode {
 
 必要なら、今の UI 仕様（ボード・編集・削除・検索・ソート）を崩さずに移植します。
 その場合、**現状のコードと互換になるように**、段階導入（MVVMだけ先に導入→次にRoom）で出します。
+
+---
+
+# 15. 2026-03-03 追加機能: データインポート / データエクスポート
+
+## 15.1 概要
+- 追加日: 2026-03-03
+- 対象: `Board` とその配下 `Magnet(StockItem)`
+- 単位: `Board` 単位で Export / Import
+- ユースケース:
+  - バックアップ
+  - 機種変更時の移行
+  - テンプレート配布/取り込み
+  - JSON直接編集による一括管理
+
+## 15.2 UI導線
+- 位置: ボード管理オーバーレイ上部の三点リーダー (`BoardDrawerOverlay`)
+- 追加メニュー:
+  - `このボードをエクスポート`（JSON）
+  - `このボードをエクスポート(CSV)`
+  - `ボードをインポート`
+
+## 15.3 エクスポート仕様
+
+### JSON
+- ファイル名: `[Board名].json`
+- 形式:
+  - `schemaVersion = 1`
+  - `format = stockmanager-board-export`
+  - `exportedAt` を付与
+  - `board.exportId` / `item.exportId` を付与（ID衝突回避）
+- 互換:
+  - テンプレート形式 `format = stockmanager-board-template` も Import時に受理
+
+### CSV
+- ファイル名: `[Board名].csv`
+- 形式:
+  - `schemaVersion = 1`
+  - `format = stockmanager-board-export-csv`
+  - メタ情報 + item行の2ブロック構成
+
+## 15.4 インポート仕様
+- `Merge` ではなく `Add` のみ
+- 同名ボードは許容（IDが異なる別ボードとして追加）
+- 同一ボード判定は行わない
+- `schemaVersion != 1` は拒否
+- `board.name` が空なら拒否
+- `item.name` が空ならその項目のみスキップ
+- item上限: `500`（暫定）
+
+## 15.5 欠損許容と補完ルール
+- 欠損許容: `exportId`, `inStock`, `createdAt`, `updatedAt`
+- 補完（Import時）:
+  - Board:
+    - DB-ID: 新規採番
+    - `createdAt = now`
+    - `exportId` がなければ生成
+  - Item:
+    - DB-ID: 新規採番
+    - `inStock = true`（欠損時）
+    - `createdAt = now`（欠損時）
+    - `updatedAt = now`（欠損時）
+    - `exportId` がなければ生成
+
+## 15.6 実装メモ（2026-03-03時点）
+- 変換ロジック:
+  - `data/BoardTransferCodec.kt`
+- Repository API:
+  - `StockRepository.buildBoardExport(...)`
+  - `StockRepository.importBoard(...)`
+- ViewModel API:
+  - `StockManagerViewModel.exportCurrentBoard(...)`
+  - `StockManagerViewModel.importBoard(...)`
+- UI連携:
+  - `ui/overlay/BoardDrawerOverlay.kt`
+  - `ui/StockManagerScreen.kt` (SAF: CreateDocument/OpenDocument)
+
+## 15.7 DBスキーマ更新
+- `AppDatabase` version: `3 -> 4`
+- 追加カラム:
+  - `boards.created_at`
+  - `boards.export_id`
+  - `stock_items.updated_at`
+  - `stock_items.export_id`
+- Migration:
+  - `MIGRATION_3_4`
