@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.stockmanager.MAX_BOARD_NAME_LENGTH
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,9 +96,9 @@ fun BoardAddModal(
                 OutlinedTextField(
                     value = text,
                     onValueChange = {
-                        text = it
+                        text = it.take(MAX_BOARD_NAME_LENGTH)
                         if (showError) {
-                            showError = it.trim().isEmpty()
+                            showError = text.trim().isEmpty()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -120,6 +121,8 @@ fun BoardAddModal(
                     supportingText = {
                         if (showError) {
                             Text("入力してください")
+                        } else {
+                            Text("${text.length}/$MAX_BOARD_NAME_LENGTH")
                         }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

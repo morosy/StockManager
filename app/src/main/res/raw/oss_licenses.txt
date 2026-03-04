@@ -1,0 +1,15 @@
+StockManager OSS Licenses
+
+This application uses the following open source software:
+
+- Kotlin (Apache License 2.0)
+- Kotlin Coroutines (Apache License 2.0)
+- AndroidX Core KTX (Apache License 2.0)
+- AndroidX Activity Compose (Apache License 2.0)
+- AndroidX Lifecycle (Apache License 2.0)
+- Jetpack Compose UI / Foundation / Material3 (Apache License 2.0)
+- AndroidX Room (Apache License 2.0)
+- AndroidX DataStore (Apache License 2.0)
+
+License text:
+https://www.apache.org/licenses/LICENSE-2.0

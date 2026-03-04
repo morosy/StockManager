@@ -1,6 +1,8 @@
 ﻿package com.example.stockmanager.data
 
 import androidx.room.withTransaction
+import com.example.stockmanager.MAX_BOARD_NAME_LENGTH
+import com.example.stockmanager.MAX_ITEM_NAME_LENGTH
 import com.example.stockmanager.data.db.AppDatabase
 import com.example.stockmanager.data.db.BoardEntity
 import com.example.stockmanager.data.db.BoardWithItems
@@ -39,25 +41,23 @@ class StockRepository(private val db: AppDatabase) {
         }
 
         val now = System.currentTimeMillis()
-
-        val homeId = stockDao.insertBoard(BoardEntity(name = "Home", createdAt = now, sortOrder = 0))
-        val board2Id = stockDao.insertBoard(BoardEntity(name = "Board 2", createdAt = now + 1, sortOrder = 1))
-
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "しょうゆ", inStock = true, createdAt = now + 1, updatedAt = now + 1))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "塩", inStock = true, createdAt = now + 2, updatedAt = now + 2))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "こしょう", inStock = false, createdAt = now + 3, updatedAt = now + 3))
-        stockDao.insertItem(StockItemEntity(boardId = homeId, name = "みりん", inStock = true, createdAt = now + 4, updatedAt = now + 4))
-
-        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "みそ", inStock = true, createdAt = now + 5, updatedAt = now + 5))
-        stockDao.insertItem(StockItemEntity(boardId = board2Id, name = "料理酒", inStock = true, createdAt = now + 6, updatedAt = now + 6))
+        val homeId = stockDao.insertBoard(
+            BoardEntity(
+                name = "ボード１".take(MAX_BOARD_NAME_LENGTH),
+                createdAt = now,
+                sortOrder = 0
+            )
+        )
 
         settingsDao.upsert(SettingsEntity(id = 0, currentBoardId = homeId))
     }
 
     suspend fun addBoard(name: String): Long {
+        val normalized = name.trim().take(MAX_BOARD_NAME_LENGTH)
+        require(normalized.isNotEmpty()) { "board name is empty" }
         val nextOrder = stockDao.countBoards()
         val now = System.currentTimeMillis()
-        return stockDao.insertBoard(BoardEntity(name = name, createdAt = now, sortOrder = nextOrder))
+        return stockDao.insertBoard(BoardEntity(name = normalized, createdAt = now, sortOrder = nextOrder))
     }
 
     suspend fun deleteBoard(boardId: Long) {
@@ -65,11 +65,13 @@ class StockRepository(private val db: AppDatabase) {
     }
 
     suspend fun addItem(boardId: Long, name: String) {
+        val normalized = name.trim().take(MAX_ITEM_NAME_LENGTH)
+        require(normalized.isNotEmpty()) { "item name is empty" }
         val now = System.currentTimeMillis()
         stockDao.insertItem(
             StockItemEntity(
                 boardId = boardId,
-                name = name,
+                name = normalized,
                 inStock = true,
                 createdAt = now,
                 updatedAt = now
@@ -91,7 +93,11 @@ class StockRepository(private val db: AppDatabase) {
     }
 
     suspend fun renameBoard(boardId: Long, newName: String) {
-        boardDao.renameBoard(boardId, newName)
+        val normalized = newName.trim().take(MAX_BOARD_NAME_LENGTH)
+        if (normalized.isEmpty()) {
+            return
+        }
+        boardDao.renameBoard(boardId, normalized)
     }
 
     suspend fun buildBoardExport(boardId: Long, format: BoardTransferFormat): ExportPayload? {
@@ -104,7 +110,7 @@ class StockRepository(private val db: AppDatabase) {
             return@withContext Result.failure(it)
         }
         val now = System.currentTimeMillis()
-        val trimmedBoardName = decoded.boardName.trim()
+        val trimmedBoardName = decoded.boardName.trim().take(MAX_BOARD_NAME_LENGTH)
         if (trimmedBoardName.isEmpty()) {
             return@withContext Result.failure(IllegalArgumentException("board.name が空です"))
         }
@@ -121,7 +127,7 @@ class StockRepository(private val db: AppDatabase) {
                 )
 
                 decoded.items.take(500).forEach { item ->
-                    val itemName = item.name.trim()
+                    val itemName = item.name.trim().take(MAX_ITEM_NAME_LENGTH)
                     if (itemName.isEmpty()) {
                         return@forEach
                     }

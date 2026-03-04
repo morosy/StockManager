@@ -3,6 +3,8 @@
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.stockmanager.MAX_BOARD_NAME_LENGTH
+import com.example.stockmanager.MAX_ITEM_NAME_LENGTH
 import com.example.stockmanager.data.BoardTransferFormat
 import com.example.stockmanager.data.ExportPayload
 import com.example.stockmanager.data.StockRepository
@@ -102,7 +104,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addBoard(name: String) {
-        val trimmed = name.trim()
+        val trimmed = name.trim().take(MAX_BOARD_NAME_LENGTH)
         if (trimmed.isEmpty()) {
             return
         }
@@ -119,7 +121,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addItem(boardId: Long, name: String) {
-        val trimmed = name.trim()
+        val trimmed = name.trim().take(MAX_ITEM_NAME_LENGTH)
         if (trimmed.isEmpty()) {
             return
         }
@@ -147,7 +149,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun renameBoard(boardId: Long, newName: String) {
-        val trimmed = newName.trim()
+        val trimmed = newName.trim().take(MAX_BOARD_NAME_LENGTH)
         if (trimmed.isEmpty()) {
             return
         }

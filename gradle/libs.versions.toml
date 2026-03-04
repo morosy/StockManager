@@ -19,6 +19,7 @@ room = "2.6.1"
 
 # Coroutines（Android）
 coroutines = "1.8.1"
+splashscreen = "1.0.1"
 
 # lifecycle-runtime-compose（Compose + Lifecycle連携）
 lifecycle = "2.8.6"
@@ -57,6 +58,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

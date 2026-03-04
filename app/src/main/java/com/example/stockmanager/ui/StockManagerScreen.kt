@@ -60,6 +60,8 @@ import com.example.stockmanager.ui.components.FilterSegmentedRow
 import com.example.stockmanager.ui.components.MagnetCard
 import com.example.stockmanager.ui.components.SortSplitButton
 import com.example.stockmanager.ui.modal.AddItemModal
+import com.example.stockmanager.ui.overlay.AppInfoScreenOverlay
+import com.example.stockmanager.ui.overlay.AppInfoScreenType
 import com.example.stockmanager.ui.overlay.BoardAddModal
 import com.example.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.example.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
@@ -81,6 +83,11 @@ fun StockManagerScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val appVersionName = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+        }.getOrDefault("")
+    }
 
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -101,6 +108,7 @@ fun StockManagerScreen(
     var drawerOpen by remember { mutableStateOf(false) }
     var boardEditMode by remember { mutableStateOf(false) }
     var boardAddModalOpen by remember { mutableStateOf(false) }
+    var appInfoScreenType by remember { mutableStateOf<AppInfoScreenType?>(null) }
     var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
 
@@ -214,6 +222,12 @@ fun StockManagerScreen(
         }
     }
 
+    fun loadRawText(resId: Int): String {
+        return runCatching {
+            context.resources.openRawResource(resId).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        }.getOrDefault("")
+    }
+
     LaunchedEffect(pendingDeleteItemId) {
         val id = pendingDeleteItemId ?: return@LaunchedEffect
         kotlinx.coroutines.delay(220)
@@ -260,8 +274,8 @@ fun StockManagerScreen(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp)
                                 .clip(RoundedCornerShape(28.dp)),
+                            expandedHeight = 56.dp,
                             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                 containerColor = Color(0xFFF3EDF7),
                                 titleContentColor = Color(0xFF1C1B1F),
@@ -453,8 +467,20 @@ fun StockManagerScreen(
                     )
                 )
             },
+            onOpenAbout = { appInfoScreenType = AppInfoScreenType.ABOUT },
+            onOpenOssLicenses = { appInfoScreenType = AppInfoScreenType.OSS_LICENSES },
+            onOpenPrivacyPolicy = { appInfoScreenType = AppInfoScreenType.PRIVACY_POLICY },
             onReorderBoards = { ids -> viewModel.reorderBoards(ids) }
         )
+
+        appInfoScreenType?.let { screenType ->
+            AppInfoScreenOverlay(
+                type = screenType,
+                onClose = { appInfoScreenType = null },
+                appVersion = appVersionName,
+                textLoader = { resId -> loadRawText(resId) }
+            )
+        }
 
         RenameBoardOverlay(
             open = renameOpen,

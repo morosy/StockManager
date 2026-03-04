@@ -73,6 +73,9 @@ fun BoardDrawerOverlay(
     onExportBoardJson: () -> Unit,
     onExportBoardCsv: () -> Unit,
     onImportBoard: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onOpenOssLicenses: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
     onReorderBoards: (List<Long>) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -174,6 +177,27 @@ fun BoardDrawerOverlay(
                                     onClick = {
                                         menuOpen.value = false
                                         onImportBoard()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("About") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onOpenAbout()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("OSSライセンス") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onOpenOssLicenses()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("プライバシーポリシー") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onOpenPrivacyPolicy()
                                     }
                                 )
                             }

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.stockmanager.MAX_BOARD_NAME_LENGTH
 
 @Composable
 fun RenameBoardOverlay(
@@ -73,7 +74,7 @@ fun RenameBoardOverlay(
 
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { text = it },
+                    onValueChange = { text = it.take(MAX_BOARD_NAME_LENGTH) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
