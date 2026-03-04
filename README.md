@@ -1,77 +1,47 @@
-# StockManager (Android / Jetpack Compose)
+# StockManager
 
-在庫（Stock）/ 出庫（Out）をボード単位で管理する、Jetpack Compose 製のシンプルな管理アプリです。  
-UI 先行で作っており、現状は **ローカル状態（in-memory）** で動作します。
+StockManager は、ボード単位で在庫管理できる Android アプリです。  
+Jetpack Compose で UI を構築し、Room でローカル永続化しています。
 
----
+## 主な機能
 
-## Features
+- ボード管理
+  - ボードの追加・削除・並び替え・名前変更
+- マグネット（アイテム）管理
+  - 追加・削除・在庫/欠品の切り替え
+  - 名前入力の最大文字数制限（24文字）
+- 一覧機能
+  - 在庫/欠品フィルタ
+  - ソート
+  - 検索
+- データ連携
+  - JSON / CSV エクスポート
+  - JSON / CSV インポート
+- 情報画面
+  - About（バージョン/コピーライト）
+  - OSSライセンス
+  - プライバシーポリシー
 
-- **Board 管理**
-  - ボードの追加 / 切り替え / 削除（確認ダイアログあり）
-  - ドロワー（オーバーレイ）でボード一覧を表示
-
-- **Item 管理**
-  - アイテム追加（モーダル）
-  - 在庫 / 出庫の切替
-  - 編集モードで削除（簡易アニメーションあり）
-
-- **表示**
-  - 在庫 / 出庫フィルタ（セグメント UI）
-  - ソート（SplitButton）
-  - 検索（テキスト入力）
-
----
-
-## Tech Stack
+## 技術スタック
 
 - Kotlin
-- Jetpack Compose
-- Material 3
-- Gradle Version Catalog（`libs.versions.toml`）
-- JVM target: 11
+- Jetpack Compose / Material 3
+- AndroidX Room
+- Coroutines
+- Gradle Version Catalog (`gradle/libs.versions.toml`)
 
----
-
-## Project Status
-
-- ✅ build OK
-- 現状は **永続化なし（Room 未導入）**
-- 次フェーズ候補:
-  - MVVM 化
-  - Room 導入
-  - Clean Architecture 化
-
-（詳細は `GenerateAI-NextPhase.md` を参照）
-
----
-
-## Requirements
+## 開発環境
 
 - Android Studio (最新安定版推奨)
-- JDK 11
+- JDK 17
 - Android SDK
 
----
-
-## Build / Run
+## ビルド
 
 ```bash
-# Windows (PowerShell)
 ./gradlew.bat :app:assembleDebug
 ```
 
-Android Studio で app を Run してください。
-
----
-
-## Notes
-
-- FilterSegmentedRow は Compose の weight に起因するトラブル回避のため、独自 Layout で等幅配置しています。
-- UI 主導の構成のため、StockManagerScreen に状態とロジックが集約されています（今後 ViewModel に移行予定）。
-
-## LISENCE
+## ライセンス
 
 MIT License
-
----

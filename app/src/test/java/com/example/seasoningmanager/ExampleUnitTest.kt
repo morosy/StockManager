@@ -1,4 +1,4 @@
-package com.example.seasoningmanager
+package com.example.stockmanager
 
 import org.junit.Test
 
