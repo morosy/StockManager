@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.stockmanager"
+    namespace = "com.morosy.stockmanager"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.stockmanager"
+        applicationId = "com.morosy.stockmanager"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -75,3 +75,4 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
