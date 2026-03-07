@@ -1,5 +1,7 @@
 ﻿package com.example.stockmanager.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +69,7 @@ import com.example.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.example.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
 import com.example.stockmanager.ui.overlay.RenameBoardOverlay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -466,6 +469,21 @@ fun StockManagerScreen(
                         "text/comma-separated-values"
                     )
                 )
+            },
+            onCreateBoardFromTool = {
+                Toast.makeText(context, "外部サイトへアクセスします", Toast.LENGTH_SHORT).show()
+                scope.launch(Dispatchers.Main) {
+                    delay(600)
+                    runCatching {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://morosy.github.io/sm_template_maker.html")
+                        )
+                        context.startActivity(intent)
+                    }.onFailure { e ->
+                        Toast.makeText(context, "ブラウザを起動できませんでした: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             },
             onOpenAbout = { appInfoScreenType = AppInfoScreenType.ABOUT },
             onOpenOssLicenses = { appInfoScreenType = AppInfoScreenType.OSS_LICENSES },

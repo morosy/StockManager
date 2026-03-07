@@ -73,6 +73,7 @@ fun BoardDrawerOverlay(
     onExportBoardJson: () -> Unit,
     onExportBoardCsv: () -> Unit,
     onImportBoard: () -> Unit,
+    onCreateBoardFromTool: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenOssLicenses: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
@@ -177,6 +178,13 @@ fun BoardDrawerOverlay(
                                     onClick = {
                                         menuOpen.value = false
                                         onImportBoard()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("ツールからボードを作成") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onCreateBoardFromTool()
                                     }
                                 )
                                 DropdownMenuItem(
