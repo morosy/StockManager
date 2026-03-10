@@ -1,6 +1,9 @@
 ﻿package com.morosy.stockmanager.data
 
 import com.morosy.stockmanager.data.db.BoardWithItems
+import com.morosy.stockmanager.data.db.StockItemEntity
+import com.morosy.stockmanager.data.db.StockItemStatus
+import com.morosy.stockmanager.data.db.inStock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.OffsetDateTime
@@ -26,7 +29,7 @@ data class ExportPayload(
 
 data class BoardImportItem(
     val name: String,
-    val inStock: Boolean,
+    val status: Int,
     val createdAt: Long?,
     val updatedAt: Long?,
     val exportId: String?
@@ -69,6 +72,7 @@ object BoardTransferCodec {
                 JSONObject()
                     .put("exportId", item.exportId ?: "i-${UUID.randomUUID()}")
                     .put("name", item.name)
+                    .put("status", StockItemStatus.normalize(item.status))
                     .put("inStock", item.inStock)
                     .put("createdAt", item.createdAt)
                     .put("updatedAt", item.updatedAt)
@@ -148,7 +152,7 @@ object BoardTransferCodec {
                 add(
                     BoardImportItem(
                         name = itemName,
-                        inStock = itemObj.optBoolean("inStock", true),
+                        status = itemObj.optStatusOrLegacyInStock(),
                         createdAt = itemObj.optLongOrNull("createdAt"),
                         updatedAt = itemObj.optLongOrNull("updatedAt"),
                         exportId = itemObj.optString("exportId").takeIf { !it.isNullOrBlank() }
@@ -207,7 +211,9 @@ object BoardTransferCodec {
             }
             items += BoardImportItem(
                 name = itemName,
-                inStock = cols.getOrNull(3)?.toBooleanStrictOrNull() ?: true,
+                status = StockItemStatus.fromLegacyInStock(
+                    cols.getOrNull(3)?.toBooleanStrictOrNull() ?: true
+                ),
                 createdAt = cols.getOrNull(4)?.toLongOrNull(),
                 updatedAt = cols.getOrNull(5)?.toLongOrNull(),
                 exportId = cols.getOrNull(1)?.takeIf { it.isNotBlank() }
@@ -289,3 +295,25 @@ private fun JSONObject.optLongOrNull(key: String): Long? {
     return optLong(key)
 }
 
+private fun JSONObject.optStatusOrLegacyInStock(): Int {
+    optStatusOrNull("status")?.let { return it }
+    return StockItemStatus.fromLegacyInStock(optBoolean("inStock", true))
+}
+
+private fun JSONObject.optStatusOrNull(key: String): Int? {
+    if (!has(key) || isNull(key)) {
+        return null
+    }
+    return when (val raw = opt(key)) {
+        is Number -> StockItemStatus.normalize(raw.toInt())
+        is String -> raw.trim().lowercase().let { normalized ->
+            when (normalized) {
+                "0", "white", "stock", "in_stock", "instock" -> StockItemStatus.IN_STOCK
+                "1", "yellow", "highlight", "highlighted", "warning", "pending" -> StockItemStatus.HIGHLIGHTED
+                "2", "red", "out", "out_of_stock", "outofstock" -> StockItemStatus.OUT_OF_STOCK
+                else -> null
+            }
+        }
+        else -> null
+    }
+}

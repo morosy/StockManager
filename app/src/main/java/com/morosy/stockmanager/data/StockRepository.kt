@@ -8,6 +8,7 @@ import com.morosy.stockmanager.data.db.BoardEntity
 import com.morosy.stockmanager.data.db.BoardWithItems
 import com.morosy.stockmanager.data.db.SettingsEntity
 import com.morosy.stockmanager.data.db.StockItemEntity
+import com.morosy.stockmanager.data.db.StockItemStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -72,7 +73,7 @@ class StockRepository(private val db: AppDatabase) {
             StockItemEntity(
                 boardId = boardId,
                 name = normalized,
-                inStock = true,
+                status = StockItemStatus.IN_STOCK,
                 createdAt = now,
                 updatedAt = now
             )
@@ -80,7 +81,8 @@ class StockRepository(private val db: AppDatabase) {
     }
 
     suspend fun toggleItem(item: StockItemEntity) {
-        stockDao.updateItem(item.copy(inStock = !item.inStock, updatedAt = System.currentTimeMillis()))
+        val nextStatus = StockItemStatus.next(item.status)
+        stockDao.updateItem(item.copy(status = nextStatus, updatedAt = System.currentTimeMillis()))
     }
 
     suspend fun deleteItem(itemId: Long) {
@@ -135,7 +137,7 @@ class StockRepository(private val db: AppDatabase) {
                         StockItemEntity(
                             boardId = newBoardId,
                             name = itemName,
-                            inStock = item.inStock,
+                            status = StockItemStatus.normalize(item.status),
                             createdAt = item.createdAt ?: now,
                             updatedAt = item.updatedAt ?: now,
                             exportId = item.exportId ?: "i-${UUID.randomUUID()}"
@@ -147,4 +149,3 @@ class StockRepository(private val db: AppDatabase) {
         }
     }
 }
-

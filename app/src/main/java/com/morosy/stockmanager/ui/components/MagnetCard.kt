@@ -26,8 +26,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,9 +39,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.isActive
+import com.morosy.stockmanager.data.db.StockItemStatus
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+import kotlinx.coroutines.isActive
 
 import com.morosy.stockmanager.data.db.StockItemEntity
 
@@ -54,23 +58,28 @@ fun MagnetCard(
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val yellowBg = Color(0xFFFFF9C4) // 黄色の背景
+    val yellowText = Color(0xFFF57F17) // 黄色のテキスト
+    val yellowBorder = Color(0xFFFFE082) // 黄色の枠線
+
+    val wobbleZ = remember(item.id) { Animatable(0f) }
+    val flipY = remember(item.id) { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    val currentStatus = StockItemStatus.normalize(item.status)
+    var displayedStatus by remember(item.id) { mutableIntStateOf(currentStatus) }
+    var isFlipping by remember(item.id) { mutableStateOf(false) }
 
-    val flipRotation = remember(item.id) { Animatable(if (item.inStock) 0f else 180f) }
-
-    LaunchedEffect(item.inStock) {
-        val target = if (item.inStock) 0f else 180f
-        if (abs(flipRotation.value - target) > 1f) {
-            flipRotation.snapTo(target)
+    LaunchedEffect(currentStatus, isFlipping) {
+        if (!isFlipping) {
+            displayedStatus = currentStatus
         }
     }
 
-    val drawFront = flipRotation.value <= 90f
-    val bg = if (drawFront) stockBg else outBg
-    val textColor = if (drawFront) stockText else outText
-    val border = if (drawFront) BorderStroke(1.dp, stockBorder) else null
-
-    val wobbleZ = remember(item.id) { Animatable(0f) }
+    val (bg, textColor, border) = when (displayedStatus) {
+        StockItemStatus.IN_STOCK -> Triple(stockBg, stockText, BorderStroke(1.dp, stockBorder))
+        StockItemStatus.HIGHLIGHTED -> Triple(yellowBg, yellowText, BorderStroke(1.dp, yellowBorder))
+        else -> Triple(outBg, outText, null)
+    }
 
     LaunchedEffect(editMode, isDeleting) {
         if (editMode && !isDeleting) {
@@ -91,31 +100,34 @@ fun MagnetCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .graphicsLayer { rotationZ = wobbleZ.value }
+                .graphicsLayer {
+                    rotationZ = wobbleZ.value
+                    rotationY = flipY.value
+                    cameraDistance = 12f * density
+                }
         ) {
             Surface(
                 modifier = Modifier
                     .matchParentSize()
-                    .graphicsLayer {
-                        rotationY = flipRotation.value
-                        cameraDistance = 16f * density
-                    }
                     .clickable {
-                        if (editMode) {
+                        if (editMode || isFlipping) {
                             return@clickable
                         }
+                        val nextStatus = StockItemStatus.next(displayedStatus)
                         scope.launch {
-                            val goingToBack = flipRotation.value < 90f
-                            val target = if (goingToBack) 180f else 0f
-
-                            flipRotation.animateTo(
-                                targetValue = target,
-                                animationSpec = tween(
-                                    durationMillis = 700,
-                                    easing = FastOutSlowInEasing
-                                )
-                            )
+                            isFlipping = true
                             onToggle()
+                            flipY.animateTo(
+                                90f,
+                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+                            )
+                            displayedStatus = nextStatus
+                            flipY.animateTo(
+                                180f,
+                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+                            )
+                            flipY.snapTo(0f)
+                            isFlipping = false
                         }
                     },
                 shape = RoundedCornerShape(12.dp),
@@ -126,7 +138,7 @@ fun MagnetCard(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            if (!drawFront) {
+                            if (flipY.value > 90f) {
                                 rotationY = 180f
                             }
                         },
@@ -160,4 +172,3 @@ fun MagnetCard(
         }
     }
 }
-

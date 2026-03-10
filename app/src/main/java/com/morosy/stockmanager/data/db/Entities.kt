@@ -43,8 +43,8 @@ data class StockItemEntity(
 
     val name: String,
 
-    @ColumnInfo(name = "in_stock")
-    val inStock: Boolean,
+    // 0: 白(在庫あり), 1: 黄色, 2: 赤(在庫なし)
+    val status: Int = StockItemStatus.IN_STOCK,
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
@@ -55,6 +55,10 @@ data class StockItemEntity(
     @ColumnInfo(name = "export_id")
     val exportId: String? = null
 )
+
+// 互換性のためのプロパティ
+val StockItemEntity.inStock: Boolean
+    get() = StockItemStatus.isStockVisible(status)
 
 // 二重定義になるためコメントアウト
 /**
@@ -69,4 +73,3 @@ data class StockItemEntity(
 //     @ColumnInfo(name = "current_board_id")
 //     val currentBoardId: Long
 // )
-
