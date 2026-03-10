@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "format": "stockmanager-board-template",
+  "board": {
+    "name": "Example Template Board",
+    "items": [
+      { "name": "Item A" },
+      { "name": "Item B" },
+      { "name": "Item C" }
+    ]
+  }
+}

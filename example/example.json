@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "format": "stockmanager-board-export",
+  "exportedAt": "2026-03-03T00:00:00+09:00",
+  "board": {
+    "exportId": "b-uuid-1",
+    "name": "Example Board",
+    "createdAt": 1700000000000,
+    "items": [
+      {
+        "exportId": "i-uuid-1",
+        "name": "White Tile",
+        "status": 0,
+        "inStock": true,
+        "createdAt": 1700000001000,
+        "updatedAt": 1700000001000
+      },
+      {
+        "exportId": "i-uuid-2",
+        "name": "Yellow Tile",
+        "status": 1,
+        "inStock": true,
+        "createdAt": 1700000002000,
+        "updatedAt": 1700000002000
+      },
+      {
+        "exportId": "i-uuid-3",
+        "name": "Red Tile",
+        "status": 2,
+        "inStock": false,
+        "createdAt": 1700000003000,
+        "updatedAt": 1700000003000
+      }
+    ]
+  }
+}

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
+import com.morosy.stockmanager.data.db.StockItemStatus
 import com.morosy.stockmanager.model.SortMode
 import com.morosy.stockmanager.ui.components.FilterSegmentedRow
 import com.morosy.stockmanager.ui.components.MagnetCard
@@ -192,7 +193,10 @@ fun StockManagerScreen(
         val q = ui.query.trim()
 
         val filtered = currentItems.filter { item ->
-            val passStock = (item.inStock && ui.showStock) || (!item.inStock && ui.showOut)
+            val normalizedStatus = StockItemStatus.normalize(item.status)
+            val passStock =
+                (StockItemStatus.isStockVisible(normalizedStatus) && ui.showStock) ||
+                    (normalizedStatus == StockItemStatus.OUT_OF_STOCK && ui.showOut)
             val passQuery = q.isEmpty() || item.name.contains(q, ignoreCase = true)
             passStock && passQuery
         }
@@ -201,8 +205,12 @@ fun StockManagerScreen(
             SortMode.OLDEST -> filtered.sortedBy { it.createdAt }
             SortMode.NEWEST -> filtered.sortedByDescending { it.createdAt }
             SortMode.NAME -> filtered.sortedBy { it.name }
-            SortMode.STOCK_FIRST -> filtered.sortedWith(compareBy({ !it.inStock }, { it.name }))
-            SortMode.OUT_FIRST -> filtered.sortedWith(compareBy({ it.inStock }, { it.name }))
+            SortMode.STOCK_FIRST -> filtered.sortedWith(
+                compareBy({ StockItemStatus.normalize(it.status) == StockItemStatus.OUT_OF_STOCK }, { it.name })
+            )
+            SortMode.OUT_FIRST -> filtered.sortedWith(
+                compareBy({ StockItemStatus.normalize(it.status) != StockItemStatus.OUT_OF_STOCK }, { it.name })
+            )
         }
     }
 
@@ -512,4 +520,3 @@ fun StockManagerScreen(
         )
     }
 }
-
