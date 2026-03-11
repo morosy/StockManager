@@ -14,7 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -32,6 +35,13 @@ fun RenameBoardOverlay(
     }
 
     var text by remember(open, initialName) { mutableStateOf(initialName) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(open, initialName) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
 
     Box(
         modifier = Modifier
@@ -76,7 +86,9 @@ fun RenameBoardOverlay(
                     value = text,
                     onValueChange = { text = it.take(MAX_BOARD_NAME_LENGTH) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
                     supportingText = {
                         Text("${text.length}/$MAX_BOARD_NAME_LENGTH")
                     }
