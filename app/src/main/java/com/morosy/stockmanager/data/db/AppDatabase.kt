@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StockItemEntity::class,
         SettingsEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,20 +43,128 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 新しい status カラムを追加（0: 白, 1: 黄色, 2: 赤）
-                // in_stock が true なら status = 0, false なら status = 2
-                db.execSQL("""
-                    ALTER TABLE stock_items ADD COLUMN status INTEGER NOT NULL DEFAULT 0
-                """.trimIndent())
-                // 既存のデータを移行: in_stock の値を status に変換
-                db.execSQL("""
-                    UPDATE stock_items 
-                    SET status = CASE 
+                recreateStockItemsTable(
+                    db = db,
+                    statusExpression = buildStatusExpression(hasStatus = false, hasLegacyInStock = true)
+                )
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val hasStatus = db.hasColumn(tableName = "stock_items", columnName = "status")
+                val hasLegacyInStock = db.hasColumn(tableName = "stock_items", columnName = "in_stock")
+
+                if (hasLegacyInStock || !hasStatus) {
+                    recreateStockItemsTable(
+                        db = db,
+                        statusExpression = buildStatusExpression(
+                            hasStatus = hasStatus,
+                            hasLegacyInStock = hasLegacyInStock
+                        )
+                    )
+                    return
+                }
+
+                db.execSQL(
+                    """
+                    UPDATE stock_items
+                    SET status = CASE
+                        WHEN status IN (0, 1, 2) THEN status
+                        ELSE 0
+                    END
+                    """.trimIndent()
+                )
+            }
+        }
+
+        private fun recreateStockItemsTable(
+            db: SupportSQLiteDatabase,
+            statusExpression: String
+        ) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS stock_items_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    board_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    status INTEGER NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    export_id TEXT,
+                    FOREIGN KEY(board_id) REFERENCES boards(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO stock_items_new (id, board_id, name, status, created_at, updated_at, export_id)
+                SELECT
+                    id,
+                    board_id,
+                    name,
+                    $statusExpression,
+                    created_at,
+                    updated_at,
+                    export_id
+                FROM stock_items
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE stock_items")
+            db.execSQL("ALTER TABLE stock_items_new RENAME TO stock_items")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_stock_items_board_id ON stock_items(board_id)")
+        }
+
+        private fun buildStatusExpression(
+            hasStatus: Boolean,
+            hasLegacyInStock: Boolean
+        ): String {
+            return when {
+                hasStatus && hasLegacyInStock -> {
+                    """
+                    CASE
+                        WHEN status IN (0, 1, 2) THEN status
                         WHEN in_stock = 1 THEN 0
                         ELSE 2
                     END
-                """.trimIndent())
+                    """.trimIndent()
+                }
+
+                hasStatus -> {
+                    """
+                    CASE
+                        WHEN status IN (0, 1, 2) THEN status
+                        ELSE 0
+                    END
+                    """.trimIndent()
+                }
+
+                hasLegacyInStock -> {
+                    """
+                    CASE
+                        WHEN in_stock = 1 THEN 0
+                        ELSE 2
+                    END
+                    """.trimIndent()
+                }
+
+                else -> "0"
             }
+        }
+
+        private fun SupportSQLiteDatabase.hasColumn(
+            tableName: String,
+            columnName: String
+        ): Boolean {
+            query("PRAGMA table_info(`$tableName`)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == columnName) {
+                        return true
+                    }
+                }
+            }
+            return false
         }
 
         fun getInstance(context: Context): AppDatabase {
@@ -66,7 +174,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "stockmanager.db"
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
 
                 INSTANCE = instance
@@ -75,4 +183,3 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
-
