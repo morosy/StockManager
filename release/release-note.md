@@ -75,3 +75,22 @@ v1.1.1
 - Fixed database inconsistency
 </en-US>
 ```
+
+
+```1.1.2
+<ja-JP>
+v1.1.2
+【修正点】
+- "ボードを追加・編集"ボタンがナビゲーションボタンと被る問題を修正
+- ボード名を変更の際，文字数と上限文字数の両方を表示するように修正
+- すべてのテキストボックスで，オーバーレイが表示された時点でテキストボックスをアクティブにするように修正
+</ja-JP>
+
+<en-US>
+v1.1.1
+[Fixes]
+- Fixed issue where "Add/Edit Board" button overlaps with navigation buttons
+- When changing board name, both current character count and maximum character limit are now displayed
+- For all text boxes, the text box will now become active as soon as the overlay is displayed
+</en-US>
+```
