@@ -36,3 +36,18 @@ Features:
 </en-US>
 ```
 
+
+```1.1.0
+<ja-JP>
+v1.1.0
+
+- アイテムのステータスを「赤色」「黄色」「白色」の3種類に変更
+- 「在庫あり・要確認・在庫なし」や「予備あり・予備なし・在庫なし」など、用途に合わせてステータスを使い分けられるようになりました。
+</ja-JP>
+
+<en-US>
+v1.1.0
+- Changed item status to three types: "Red", "Yellow", and "White"
+- You can now use the statuses according to your needs, such as "In Stock / Needs Confirmation / Out of Stock" or "Spare Available / No Spare / Out of Stock".
+</en-US>
+```
