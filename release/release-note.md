@@ -87,7 +87,7 @@ v1.1.2
 </ja-JP>
 
 <en-US>
-v1.1.1
+v1.1.2
 [Fixes]
 - Fixed issue where "Add/Edit Board" button overlaps with navigation buttons
 - When changing board name, both current character count and maximum character limit are now displayed
