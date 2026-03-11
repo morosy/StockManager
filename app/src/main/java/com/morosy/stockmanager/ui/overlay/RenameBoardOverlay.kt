@@ -76,7 +76,10 @@ fun RenameBoardOverlay(
                     value = text,
                     onValueChange = { text = it.take(MAX_BOARD_NAME_LENGTH) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        Text("${text.length}/$MAX_BOARD_NAME_LENGTH")
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
