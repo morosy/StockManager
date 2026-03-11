@@ -72,7 +72,7 @@ fun FilterSegmentedRow(
                 onClick = onStockClick,
             )
             SegItem(
-                label = "出庫",
+                label = "欠品",
                 selected = showOut,
                 onClick = onOutClick,
             )
