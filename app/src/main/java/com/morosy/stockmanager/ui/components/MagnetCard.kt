@@ -128,17 +128,17 @@ fun MagnetCard(
                         val nextStatus = StockItemStatus.next(displayedStatus)
                         scope.launch {
                             isFlipping = true
-                            onToggle()
                             flipY.animateTo(
                                 90f,
-                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+                                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
                             )
                             displayedStatus = nextStatus
                             flipY.animateTo(
                                 180f,
-                                animationSpec = tween(durationMillis = 110, easing = FastOutSlowInEasing)
+                                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
                             )
                             flipY.snapTo(0f)
+                            onToggle()
                             isFlipping = false
                         }
                     },

@@ -2,6 +2,9 @@
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,16 +44,24 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,6 +117,10 @@ fun BoardDrawerOverlay(
     val listState = rememberLazyListState()
     val onReorderBoardsLatest = rememberUpdatedState(onReorderBoards)
     val menuOpen = remember { mutableStateOf(false) }
+    val itemHeights = remember { mutableStateMapOf<Long, Int>() }
+    var draggingBoardId by remember { mutableStateOf<Long?>(null) }
+    var draggingIndex by remember { mutableIntStateOf(-1) }
+    var draggingOffsetY by remember { mutableFloatStateOf(0f) }
 
     if (open || scrim.value > 0f) {
         Box(
@@ -231,6 +246,7 @@ fun BoardDrawerOverlay(
                     ) {
                         items(renderBoards, key = { it.id }) { b ->
                             val selected = b.id == currentBoardId
+                            val isDragging = draggingBoardId == b.id
                             val bg = if (selected) {
                                 colorScheme.primary
                             } else {
@@ -241,17 +257,125 @@ fun BoardDrawerOverlay(
                             } else {
                                 colorScheme.onSurface
                             }
+                            val translatedY by animateFloatAsState(
+                                targetValue = if (isDragging) draggingOffsetY else 0f,
+                                animationSpec = if (isDragging) {
+                                    spring(
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                } else {
+                                    tween(
+                                        durationMillis = 260,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                },
+                                label = "boardDragTranslation"
+                            )
+                            val liftScale by animateFloatAsState(
+                                targetValue = if (isDragging) 1.06f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                label = "boardLiftScale"
+                            )
+                            val liftElevation by animateFloatAsState(
+                                targetValue = if (isDragging) 42f else if (selected) 2f else 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                label = "boardLiftElevation"
+                            )
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .onSizeChanged { itemHeights[b.id] = it.height }
                             ) {
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .animateItem(
+                                            fadeInSpec = null,
+                                            fadeOutSpec = null,
+                                            placementSpec = if (isDragging) {
+                                                null
+                                            } else {
+                                                tween(
+                                                    durationMillis = 320,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            }
+                                        )
+                                        .fillMaxWidth()
+                                        .pointerInput(editMode, b.id) {
+                                            if (!editMode) {
+                                                return@pointerInput
+                                            }
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    draggingBoardId = b.id
+                                                    draggingIndex = localBoards.indexOfFirst { it.id == b.id }
+                                                    draggingOffsetY = 0f
+                                                },
+                                                onDragEnd = {
+                                                    draggingBoardId = null
+                                                    draggingIndex = -1
+                                                    draggingOffsetY = 0f
+                                                    onReorderBoardsLatest.value(localBoards.map { it.id })
+                                                },
+                                                onDragCancel = {
+                                                    draggingBoardId = null
+                                                    draggingIndex = -1
+                                                    draggingOffsetY = 0f
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+
+                                                    val currentIndex = draggingIndex
+                                                    if (currentIndex < 0) {
+                                                        return@detectDragGesturesAfterLongPress
+                                                    }
+
+                                                    val currentHeight = itemHeights[b.id]?.toFloat() ?: return@detectDragGesturesAfterLongPress
+                                                    draggingOffsetY += dragAmount.y
+
+                                                    while (
+                                                        draggingOffsetY > currentHeight / 2f &&
+                                                        draggingIndex < localBoards.lastIndex
+                                                    ) {
+                                                        val moved = localBoards.removeAt(draggingIndex)
+                                                        localBoards.add(draggingIndex + 1, moved)
+                                                        draggingIndex += 1
+                                                        draggingOffsetY -= currentHeight
+                                                    }
+
+                                                    while (
+                                                        draggingOffsetY < -(currentHeight / 2f) &&
+                                                        draggingIndex > 0
+                                                    ) {
+                                                        val moved = localBoards.removeAt(draggingIndex)
+                                                        localBoards.add(draggingIndex - 1, moved)
+                                                        draggingIndex -= 1
+                                                        draggingOffsetY += currentHeight
+                                                    }
+                                                }
+                                            )
+                                        }
+                                        .graphicsLayer {
+                                            translationY = translatedY
+                                            scaleX = liftScale
+                                            scaleY = liftScale
+                                            shadowElevation = liftElevation
+                                            ambientShadowColor = Color.Black.copy(alpha = 0.24f)
+                                            spotShadowColor = Color.Black.copy(alpha = 0.32f)
+                                        }
+                                        .zIndex(if (isDragging) 2f else 0f),
                                     color = bg,
                                     shape = RoundedCornerShape(12.dp),
-                                    tonalElevation = if (selected) 2.dp else 0.dp,
+                                    tonalElevation = if (selected && !isDragging) 2.dp else 0.dp,
                                     onClick = {
                                         if (!editMode) {
                                             onSelectBoard(b.id)
@@ -270,43 +394,7 @@ fun BoardDrawerOverlay(
                                                 modifier = Modifier
                                                     .size(28.dp)
                                                     .clip(CircleShape)
-                                                    .background(colorScheme.surfaceVariant)
-                                                    .pointerInput(b.id) {
-                                                        detectDragGesturesAfterLongPress(
-                                                            onDragEnd = {
-                                                                onReorderBoardsLatest.value(localBoards.map { it.id })
-                                                            },
-                                                            onDrag = { change, _ ->
-                                                                change.consume()
-
-                                                                val fromIndex = localBoards.indexOfFirst { it.id == b.id }
-                                                                if (fromIndex < 0) {
-                                                                    return@detectDragGesturesAfterLongPress
-                                                                }
-
-                                                                val visible = listState.layoutInfo.visibleItemsInfo
-                                                                if (visible.isEmpty()) {
-                                                                    return@detectDragGesturesAfterLongPress
-                                                                }
-
-                                                                val pointerY = change.position.y
-                                                                val targetInfo = visible.firstOrNull { info ->
-                                                                    val top = info.offset
-                                                                    val bottom = info.offset + info.size
-                                                                    pointerY.toInt() in top..bottom
-                                                                } ?: return@detectDragGesturesAfterLongPress
-
-                                                                val toIndex = targetInfo.index
-                                                                if (toIndex == fromIndex) {
-                                                                    return@detectDragGesturesAfterLongPress
-                                                                }
-
-                                                                val moved = localBoards.removeAt(fromIndex)
-                                                                val insertIndex = toIndex.coerceIn(0, localBoards.size)
-                                                                localBoards.add(insertIndex, moved)
-                                                            }
-                                                        )
-                                                    },
+                                                    .background(colorScheme.surfaceVariant),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(
