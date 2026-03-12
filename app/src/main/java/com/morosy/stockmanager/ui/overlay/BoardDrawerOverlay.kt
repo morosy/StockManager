@@ -82,6 +82,7 @@ fun BoardDrawerOverlay(
     onReorderBoards: (List<Long>) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val colorScheme = MaterialTheme.colorScheme
 
     val scrim = remember { Animatable(0f) }
     val panelX = remember { Animatable(-280f) }
@@ -127,7 +128,7 @@ fun BoardDrawerOverlay(
                     .fillMaxHeight()
                     .width(280.dp)
                     .offset(x = panelX.value.dp),
-                color = Color.White,
+                color = colorScheme.surface,
                 tonalElevation = 6.dp,
                 shape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
             ) {
@@ -230,7 +231,16 @@ fun BoardDrawerOverlay(
                     ) {
                         items(renderBoards, key = { it.id }) { b ->
                             val selected = b.id == currentBoardId
-                            val bg = if (selected) Color(0xFFF3EDF7) else Color.Transparent
+                            val bg = if (selected) {
+                                colorScheme.primary
+                            } else {
+                                colorScheme.surfaceVariant.copy(alpha = 0.72f)
+                            }
+                            val contentColor = if (selected) {
+                                colorScheme.onPrimary
+                            } else {
+                                colorScheme.onSurface
+                            }
 
                             Box(
                                 modifier = Modifier
@@ -241,6 +251,7 @@ fun BoardDrawerOverlay(
                                     modifier = Modifier.fillMaxWidth(),
                                     color = bg,
                                     shape = RoundedCornerShape(12.dp),
+                                    tonalElevation = if (selected) 2.dp else 0.dp,
                                     onClick = {
                                         if (!editMode) {
                                             onSelectBoard(b.id)
@@ -259,7 +270,7 @@ fun BoardDrawerOverlay(
                                                 modifier = Modifier
                                                     .size(28.dp)
                                                     .clip(CircleShape)
-                                                    .background(Color(0xFFF3EDF7))
+                                                    .background(colorScheme.surfaceVariant)
                                                     .pointerInput(b.id) {
                                                         detectDragGesturesAfterLongPress(
                                                             onDragEnd = {
@@ -300,7 +311,7 @@ fun BoardDrawerOverlay(
                                             ) {
                                                 Text(
                                                     text = ":::",
-                                                    color = Color(0xFF6750A4),
+                                                    color = colorScheme.primary,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -310,6 +321,7 @@ fun BoardDrawerOverlay(
 
                                         Text(
                                             text = b.name,
+                                            color = contentColor,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
@@ -325,12 +337,12 @@ fun BoardDrawerOverlay(
                                                 modifier = Modifier
                                                     .size(28.dp)
                                                     .clip(CircleShape)
-                                                    .background(Color.White)
+                                                    .background(colorScheme.surface)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Filled.Close,
                                                     contentDescription = "削除",
-                                                    tint = Color(0xFFB3261E)
+                                                    tint = colorScheme.onErrorContainer
                                                 )
                                             }
                                         } else {
@@ -392,4 +404,3 @@ fun BoardDrawerOverlay(
         }
     }
 }
-

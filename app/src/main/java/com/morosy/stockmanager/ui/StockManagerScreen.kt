@@ -35,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,12 +79,13 @@ import kotlinx.coroutines.launch
 fun StockManagerScreen(
     viewModel: StockManagerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val appBg = Color(0xFFF5F5F5)
-    val stockBg = Color.White
-    val stockText = Color(0xFF1C1B1F)
-    val stockBorder = Color(0xFFE7E0EC)
-    val outBg = Color(0xFFF9DEDC)
-    val outText = Color(0xFFB3261E)
+    val colorScheme = MaterialTheme.colorScheme
+    val appBg = colorScheme.background
+    val stockBg = colorScheme.surface
+    val stockText = colorScheme.onSurface
+    val stockBorder = colorScheme.outline.copy(alpha = 0.35f)
+    val outBg = colorScheme.errorContainer
+    val outText = colorScheme.onErrorContainer
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -288,10 +290,10 @@ fun StockManagerScreen(
                                 .clip(RoundedCornerShape(28.dp)),
                             expandedHeight = 56.dp,
                             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                containerColor = Color(0xFFF3EDF7),
-                                titleContentColor = Color(0xFF1C1B1F),
-                                navigationIconContentColor = Color(0xFF1C1B1F),
-                                actionIconContentColor = Color(0xFF1C1B1F)
+                                containerColor = colorScheme.surfaceVariant,
+                                titleContentColor = colorScheme.onSurface,
+                                navigationIconContentColor = colorScheme.onSurface,
+                                actionIconContentColor = colorScheme.onSurface
                             ),
                             windowInsets = WindowInsets(0, 0, 0, 0)
                         )
@@ -398,8 +400,8 @@ fun StockManagerScreen(
                         .padding(start = 24.dp, bottom = 24.dp)
                         .size(56.dp),
                     shape = CircleShape,
-                    containerColor = if (editMode) Color(0xFFB3261E) else Color.White,
-                    contentColor = if (editMode) Color.White else Color(0xFF6750A4)
+                    containerColor = if (editMode) colorScheme.errorContainer else colorScheme.surface,
+                    contentColor = if (editMode) colorScheme.onErrorContainer else colorScheme.primary
                 ) {
                     Icon(Icons.Filled.Edit, contentDescription = "編集")
                 }
@@ -413,8 +415,8 @@ fun StockManagerScreen(
                             .padding(end = 24.dp, bottom = 24.dp)
                             .size(56.dp),
                         shape = CircleShape,
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF6750A4)
+                        containerColor = colorScheme.surface,
+                        contentColor = colorScheme.primary
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = "追加")
                     }
