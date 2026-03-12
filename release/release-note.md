@@ -94,3 +94,21 @@ v1.1.2
 - For all text boxes, the text box will now become active as soon as the overlay is displayed
 </en-US>
 ```
+
+```1.1.3
+<ja-JP>
+v1.1.3
+【修正点】
+- ユーザーインターフェースを修正
+- ステータスバーの視認性向上
+- 検索バーのレイアウト修正
+</ja-JP>
+
+<en-US>
+v1.1.2
+[Fixes]
+- Updated user interface
+- Improved visibility of status bar
+- Adjusted layout of search bar
+</en-US>
+```
