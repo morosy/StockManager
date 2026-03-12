@@ -39,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -328,15 +329,28 @@ fun StockManagerScreen(
                     }
 
                     if (searchOpen) {
-                        OutlinedTextField(
-                            value = ui.query,
-                            onValueChange = { viewModel.setQuery(it) },
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            placeholder = { Text("アイテム名で検索") },
-                            singleLine = true
-                        )
+                                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = ui.query,
+                                onValueChange = { viewModel.setQuery(it) },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("アイテム名で検索") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            TextButton(
+                                onClick = { searchOpen = false },
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text("閉じる")
+                            }
+                        }
                     }
                 }
             }
