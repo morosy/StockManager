@@ -105,10 +105,28 @@ v1.1.3
 </ja-JP>
 
 <en-US>
-v1.1.2
+v1.1.3
 [Fixes]
 - Updated user interface
 - Improved visibility of status bar
 - Adjusted layout of search bar
+</en-US>
+```
+
+```1.1.4
+<ja-JP>
+v1.1.4
+【修正点】
+- アニメーションの修正
+- 在庫→欠品の切り替えの際、切り替えアニメーションの視認性向上
+- ボードの並び替えの際、ドラッグアンドドロップのアニメーションを追加
+</ja-JP>
+
+<en-US>
+v1.1.4
+[Fixes]
+- Updated animations
+- Improved visibility of switch animation when toggling between In Stock and Out of Stock
+- Added drag-and-drop animation when reordering boards
 </en-US>
 ```
