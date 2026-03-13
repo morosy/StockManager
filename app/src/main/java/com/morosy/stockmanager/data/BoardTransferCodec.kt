@@ -15,6 +15,7 @@ private const val FORMAT_TEMPLATE = "stockmanager-board-template"
 private const val FORMAT_CSV = "stockmanager-board-export-csv"
 private const val SCHEMA_VERSION = 1
 private const val MAX_IMPORT_ITEMS = 500
+private val EXPORT_FILE_TIMESTAMP_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
 
 enum class BoardTransferFormat {
     JSON,
@@ -60,6 +61,7 @@ object BoardTransferCodec {
     private fun exportJson(boardWithItems: BoardWithItems): ExportPayload {
         val board = boardWithItems.board
         val boardExportId = board.exportId ?: "b-${UUID.randomUUID()}"
+        val exportedAt = OffsetDateTime.now()
 
         val boardJson = JSONObject()
             .put("exportId", boardExportId)
@@ -83,12 +85,12 @@ object BoardTransferCodec {
         val root = JSONObject()
             .put("schemaVersion", SCHEMA_VERSION)
             .put("format", FORMAT_JSON)
-            .put("exportedAt", OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+            .put("exportedAt", exportedAt.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
             .put("board", boardJson)
 
-        val safeName = sanitizeFileName(board.name.ifBlank { "board" })
+        val fileName = buildExportFileName(board.name, "json", exportedAt)
         return ExportPayload(
-            fileName = "$safeName.json",
+            fileName = fileName,
             mimeType = "application/json",
             content = root.toString(2)
         )
@@ -97,11 +99,12 @@ object BoardTransferCodec {
     private fun exportCsv(boardWithItems: BoardWithItems): ExportPayload {
         val board = boardWithItems.board
         val boardExportId = board.exportId ?: "b-${UUID.randomUUID()}"
+        val exportedAt = OffsetDateTime.now()
         val sb = StringBuilder()
         sb.appendLine("meta_key,meta_value")
         sb.appendLine(csvLine("schemaVersion", SCHEMA_VERSION.toString()))
         sb.appendLine(csvLine("format", FORMAT_CSV))
-        sb.appendLine(csvLine("exportedAt", OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)))
+        sb.appendLine(csvLine("exportedAt", exportedAt.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)))
         sb.appendLine(csvLine("boardExportId", boardExportId))
         sb.appendLine(csvLine("boardName", board.name))
         sb.appendLine(csvLine("boardCreatedAt", board.createdAt.toString()))
@@ -120,12 +123,18 @@ object BoardTransferCodec {
             )
         }
 
-        val safeName = sanitizeFileName(board.name.ifBlank { "board" })
+        val fileName = buildExportFileName(board.name, "csv", exportedAt)
         return ExportPayload(
-            fileName = "$safeName.csv",
+            fileName = fileName,
             mimeType = "text/csv",
             content = sb.toString()
         )
+    }
+
+    private fun buildExportFileName(boardName: String, extension: String, exportedAt: OffsetDateTime): String {
+        val safeName = sanitizeFileName(boardName.ifBlank { "board" })
+        val timestamp = exportedAt.format(EXPORT_FILE_TIMESTAMP_FORMAT)
+        return "${safeName}_$timestamp.$extension"
     }
 
     private fun importJson(content: String): Result<BoardImportData> = runCatching {
