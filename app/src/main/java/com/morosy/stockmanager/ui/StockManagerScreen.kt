@@ -54,7 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.morosy.stockmanager.data.BoardTransferFormat
@@ -123,6 +125,14 @@ fun StockManagerScreen(
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
 
     var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
+    var searchFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = ui.query,
+                selection = TextRange(ui.query.length)
+            )
+        )
+    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
@@ -265,6 +275,15 @@ fun StockManagerScreen(
         pendingDeleteItemId = null
     }
 
+    LaunchedEffect(ui.query) {
+        if (ui.query != searchFieldValue.text) {
+            searchFieldValue = TextFieldValue(
+                text = ui.query,
+                selection = TextRange(ui.query.length)
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = appBg,
@@ -352,8 +371,11 @@ fun StockManagerScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             OutlinedTextField(
-                                value = ui.query,
-                                onValueChange = { viewModel.setQuery(it) },
+                                value = searchFieldValue,
+                                onValueChange = { value ->
+                                    searchFieldValue = value
+                                    viewModel.setQuery(value.text)
+                                },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("アイテム名で検索") },
                                 singleLine = true,
@@ -367,6 +389,7 @@ fun StockManagerScreen(
                             }
                         }
                     }
+
                 }
             }
         ) { padding ->
@@ -431,6 +454,23 @@ fun StockManagerScreen(
                             closeRenameItem()
                         }
                     )
+                }
+
+                if (editMode) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(24.dp)
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "アイテムをタップで名称変更",
+                            color = colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
 
                 FloatingActionButton(

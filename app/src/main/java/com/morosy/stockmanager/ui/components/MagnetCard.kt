@@ -11,20 +11,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -114,7 +110,7 @@ fun MagnetCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (editMode) 68.dp else 56.dp)
+                .height(56.dp)
                 .graphicsLayer {
                     rotationZ = wobbleZ.value
                     rotationY = flipY.value
@@ -123,9 +119,7 @@ fun MagnetCard(
         ) {
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(56.dp)
+                    .matchParentSize()
                     .clickable {
                         if (isFlipping) {
                             return@clickable
@@ -170,52 +164,29 @@ fun MagnetCard(
                         text = item.name,
                         color = textColor,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
                         maxLines = 2,
                         textAlign = TextAlign.Center
                     )
-
-                    if (editMode) {
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 2.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = textColor.copy(alpha = 0.45f)
-                            )
-                            Text(
-                                text = "タップで名称変更",
-                                color = textColor.copy(alpha = 0.72f),
-                                fontSize = 9.sp,
-                                lineHeight = 10.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
                 }
             }
 
             if (editMode) {
-                IconButton(
-                    onClick = { onDelete() },
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(end = 2.dp)
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 6.dp)
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(colorScheme.surface)
+                        .clickable(onClick = onDelete),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = "削除",
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(17.dp),
                         tint = colorScheme.onErrorContainer
                     )
                 }
