@@ -43,10 +43,14 @@ import com.morosy.stockmanager.MAX_ITEM_NAME_LENGTH
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemModal(
+    title: String = "追加",
+    initialText: String = "",
+    confirmLabel: String = "保存",
+    placeholder: String = "名前を入力",
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
-    var text by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(initialText) }
     var showError by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -59,6 +63,11 @@ fun AddItemModal(
         }
         onSave(name)
         text = ""
+        showError = false
+    }
+
+    LaunchedEffect(initialText) {
+        text = initialText
         showError = false
     }
 
@@ -97,7 +106,7 @@ fun AddItemModal(
                     }
 
                     Text(
-                        text = "追加",
+                        text = title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -115,7 +124,7 @@ fun AddItemModal(
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     label = { Text("名前") },
-                    placeholder = { Text("名前を入力") },
+                    placeholder = { Text(placeholder) },
                     singleLine = true,
                     isError = showError,
                     trailingIcon = {
@@ -155,10 +164,9 @@ fun AddItemModal(
                         disabledContentColor = Color.White.copy(alpha = 0.80f)
                     )
                 ) {
-                    Text("保存")
+                    Text(confirmLabel)
                 }
             }
         }
     }
 }
-

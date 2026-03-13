@@ -89,6 +89,18 @@ class StockRepository(private val db: AppDatabase) {
         stockDao.deleteItemById(itemId)
     }
 
+    suspend fun renameItem(itemId: Long, newName: String) {
+        val normalized = newName.trim().take(MAX_ITEM_NAME_LENGTH)
+        if (normalized.isEmpty()) {
+            return
+        }
+        stockDao.renameItem(
+            itemId = itemId,
+            newName = normalized,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
     suspend fun updateSettings(transform: (SettingsEntity) -> SettingsEntity) {
         val current = settingsDao.getOnce() ?: SettingsEntity()
         settingsDao.upsert(transform(current))

@@ -108,6 +108,9 @@ fun StockManagerScreen(
     var searchOpen by remember { mutableStateOf(false) }
     var addItemModalOpen by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
+    var renameItemModalOpen by remember { mutableStateOf(false) }
+    var pendingRenameItemId by remember { mutableStateOf<Long?>(null) }
+    var pendingRenameItemName by remember { mutableStateOf("") }
 
     val deletingIds = remember { mutableStateListOf<Long>() }
     var pendingDeleteItemId by remember { mutableStateOf<Long?>(null) }
@@ -234,6 +237,18 @@ fun StockManagerScreen(
                 Toast.makeText(context, "エクスポート失敗: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    fun openRenameItem(itemId: Long, itemName: String) {
+        pendingRenameItemId = itemId
+        pendingRenameItemName = itemName
+        renameItemModalOpen = true
+    }
+
+    fun closeRenameItem() {
+        renameItemModalOpen = false
+        pendingRenameItemId = null
+        pendingRenameItemName = ""
     }
 
     fun loadRawText(resId: Int): String {
@@ -383,6 +398,7 @@ fun StockManagerScreen(
                                     viewModel.toggleItem(item)
                                 }
                             },
+                            onEditName = { openRenameItem(item.id, item.name) },
                             onDelete = { requestDeleteItem(item.id) }
                         )
                     }
@@ -397,6 +413,22 @@ fun StockManagerScreen(
                                 viewModel.addItem(boardId, name)
                             }
                             addItemModalOpen = false
+                        }
+                    )
+                }
+
+                if (renameItemModalOpen) {
+                    AddItemModal(
+                        title = "名称変更",
+                        initialText = pendingRenameItemName,
+                        confirmLabel = "保存",
+                        placeholder = "アイテム名を入力",
+                        onDismiss = { closeRenameItem() },
+                        onSave = { name ->
+                            pendingRenameItemId?.let { itemId ->
+                                viewModel.renameItem(itemId, name)
+                            }
+                            closeRenameItem()
                         }
                     )
                 }

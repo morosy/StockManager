@@ -31,10 +31,12 @@ interface StockDao {
     @Update
     suspend fun updateItem(item: StockItemEntity)
 
+    @Query("UPDATE stock_items SET name = :newName, updated_at = :updatedAt WHERE id = :itemId")
+    suspend fun renameItem(itemId: Long, newName: String, updatedAt: Long)
+
     @Query("DELETE FROM stock_items WHERE id = :itemId")
     suspend fun deleteItemById(itemId: Long)
 
     @Query("SELECT COUNT(*) FROM boards")
     suspend fun countBoards(): Int
 }
-

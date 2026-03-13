@@ -142,6 +142,16 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun renameItem(itemId: Long, newName: String) {
+        val trimmed = newName.trim().take(MAX_ITEM_NAME_LENGTH)
+        if (trimmed.isEmpty()) {
+            return
+        }
+        viewModelScope.launch {
+            repo.renameItem(itemId, trimmed)
+        }
+    }
+
     fun reorderBoards(orderedIds: List<Long>) {
         viewModelScope.launch {
             repo.updateBoardOrders(orderedIds)
@@ -185,4 +195,3 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 }
-
