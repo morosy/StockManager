@@ -130,3 +130,27 @@ v1.1.4
 - Added drag-and-drop animation when reordering boards
 </en-US>
 ```
+
+```1.1.5
+<ja-JP>
+v1.1.5
+【新機能】
+- アイテム名変更機能を実装
+【修正点】
+- ボード並び替えのアニメーションを修正
+- 編集画面のレイアウトを修正
+- アイテム削除ボタンの位置を修正
+- 検索機能の不具合を修正
+</ja-JP>
+
+<en-US>
+v1.1.5
+[New Features]
+- Implemented item name change feature
+[Fixes]
+- Updated animation for board reordering
+- Updated layout of edit screen
+- Adjusted position of item delete button
+- Fixed bug in search functionality
+</en-US>
+```
