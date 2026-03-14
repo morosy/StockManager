@@ -45,15 +45,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -74,6 +79,9 @@ import com.morosy.stockmanager.ui.overlay.BoardAddModal
 import com.morosy.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.morosy.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
 import com.morosy.stockmanager.ui.overlay.RenameBoardOverlay
+import com.morosy.stockmanager.ui.overlay.TutorialOverlay
+import com.morosy.stockmanager.ui.tutorial.TutorialStep
+import com.morosy.stockmanager.ui.tutorial.TutorialTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -137,6 +145,12 @@ fun StockManagerScreen(
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
 
     var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
+    val tutorialTargets = remember { mutableStateMapOf<TutorialTarget, Rect>() }
+    var tutorialVisible by rememberSaveable { mutableStateOf(false) }
+    var tutorialStep by rememberSaveable { mutableStateOf(TutorialStep.OPEN_BOARD_LIST) }
+    var tutorialAutoStarted by rememberSaveable { mutableStateOf(false) }
+    var tutorialAwaitingItemModalClose by remember { mutableStateOf(false) }
+    var tutorialAwaitingRenameClose by remember { mutableStateOf(false) }
     var searchFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -171,6 +185,30 @@ fun StockManagerScreen(
                 }
             }
         }
+    }
+
+    fun startTutorial() {
+        tutorialVisible = true
+        tutorialStep = TutorialStep.OPEN_BOARD_LIST
+        tutorialAwaitingItemModalClose = false
+        tutorialAwaitingRenameClose = false
+        drawerOpen = false
+        boardEditMode = false
+        editMode = false
+        sortMenuOpen = false
+        searchOpen = false
+        appInfoScreenType = null
+        if (!ui.tutorialSeen) {
+            viewModel.markTutorialSeen()
+        }
+    }
+
+    fun closeTutorial() {
+        tutorialVisible = false
+        tutorialAwaitingItemModalClose = false
+        tutorialAwaitingRenameClose = false
+        boardEditMode = false
+        sortMenuOpen = false
     }
 
     val openDocumentLauncher = rememberLauncherForActivityResult(
@@ -303,6 +341,160 @@ fun StockManagerScreen(
         }
     }
 
+    LaunchedEffect(ui.tutorialSeen) {
+        if (!ui.tutorialSeen && !tutorialAutoStarted) {
+            tutorialAutoStarted = true
+            startTutorial()
+        }
+    }
+
+    LaunchedEffect(drawerOpen, boardEditMode, hasBoard) {
+        if (!drawerOpen) {
+            tutorialTargets.remove(TutorialTarget.BOARD_EDIT)
+            tutorialTargets.remove(TutorialTarget.BOARD_ADD)
+        }
+        if (!hasBoard) {
+            tutorialTargets.remove(TutorialTarget.ITEM_ADD_FAB)
+            tutorialTargets.remove(TutorialTarget.ITEM_EDIT_FAB)
+            tutorialTargets.remove(TutorialTarget.BOARD_TITLE)
+            tutorialTargets.remove(TutorialTarget.FILTER_ROW)
+            tutorialTargets.remove(TutorialTarget.SORT_BUTTON)
+        }
+        if (!boardEditMode) {
+            tutorialTargets.remove(TutorialTarget.BOARD_ADD)
+        }
+    }
+
+    LaunchedEffect(tutorialVisible, tutorialStep) {
+        if (!tutorialVisible) {
+            return@LaunchedEffect
+        }
+        when (tutorialStep) {
+            TutorialStep.OPEN_BOARD_LIST -> {
+                drawerOpen = false
+                boardEditMode = false
+                editMode = false
+            }
+            TutorialStep.OPEN_BOARD_EDIT -> {
+                drawerOpen = true
+                boardEditMode = false
+                editMode = false
+            }
+            TutorialStep.ADD_BOARD -> {
+                drawerOpen = true
+                boardEditMode = true
+                editMode = false
+            }
+            TutorialStep.ADD_ITEM,
+            TutorialStep.FILTER_ITEMS,
+            TutorialStep.SORT_ITEMS -> {
+                drawerOpen = false
+                boardEditMode = false
+                editMode = false
+            }
+            TutorialStep.EDIT_ITEM -> {
+                drawerOpen = false
+                boardEditMode = false
+            }
+            TutorialStep.RENAME_BOARD -> {
+                drawerOpen = false
+                boardEditMode = false
+                editMode = false
+            }
+        }
+    }
+
+    LaunchedEffect(tutorialVisible, tutorialStep, ui.boards.size, boardAddModalOpen) {
+        if (!tutorialVisible || tutorialStep != TutorialStep.ADD_BOARD) {
+            return@LaunchedEffect
+        }
+        if (!boardAddModalOpen && ui.boards.isNotEmpty()) {
+            tutorialStep = TutorialStep.ADD_ITEM
+        }
+    }
+
+    LaunchedEffect(tutorialVisible, tutorialStep, tutorialAwaitingItemModalClose, addItemModalOpen) {
+        if (
+            tutorialVisible &&
+            tutorialStep == TutorialStep.ADD_ITEM &&
+            tutorialAwaitingItemModalClose &&
+            !addItemModalOpen
+        ) {
+            tutorialAwaitingItemModalClose = false
+            tutorialStep = TutorialStep.EDIT_ITEM
+        }
+    }
+
+    LaunchedEffect(tutorialVisible, tutorialStep, tutorialAwaitingRenameClose, renameOpen) {
+        if (
+            tutorialVisible &&
+            tutorialStep == TutorialStep.RENAME_BOARD &&
+            tutorialAwaitingRenameClose &&
+            !renameOpen
+        ) {
+            tutorialAwaitingRenameClose = false
+            tutorialStep = TutorialStep.FILTER_ITEMS
+        }
+    }
+
+    val tutorialTargetRect = tutorialTargets[tutorialStep.target]
+    val hideTutorialOverlay =
+        !tutorialVisible ||
+            (tutorialStep == TutorialStep.ADD_BOARD && boardAddModalOpen) ||
+            (tutorialStep == TutorialStep.ADD_ITEM && addItemModalOpen) ||
+            (tutorialStep == TutorialStep.RENAME_BOARD && renameOpen)
+
+    val tutorialSupportingMessage = when {
+        tutorialStep == TutorialStep.ADD_BOARD && ui.boards.isEmpty() -> "ボードを追加すると次へ進めます"
+        tutorialTargetRect == null -> "表示を準備しています..."
+        else -> null
+    }
+
+    val tutorialCanAdvance = when (tutorialStep) {
+        TutorialStep.FILTER_ITEMS,
+        TutorialStep.SORT_ITEMS -> tutorialTargetRect != null
+        else -> tutorialTargetRect != null
+    }
+
+    fun advanceTutorial() {
+        val next = tutorialStep.next()
+        if (next == null) {
+            closeTutorial()
+        } else {
+            tutorialStep = next
+        }
+    }
+
+    fun onTutorialTargetTap() {
+        when (tutorialStep) {
+            TutorialStep.OPEN_BOARD_LIST -> {
+                drawerOpen = true
+                tutorialStep = TutorialStep.OPEN_BOARD_EDIT
+            }
+            TutorialStep.OPEN_BOARD_EDIT -> {
+                boardEditMode = true
+                tutorialStep = TutorialStep.ADD_BOARD
+            }
+            TutorialStep.ADD_BOARD -> {
+                boardAddModalOpen = true
+            }
+            TutorialStep.ADD_ITEM -> {
+                tutorialAwaitingItemModalClose = true
+                addItemModalOpen = true
+            }
+            TutorialStep.EDIT_ITEM -> {
+                editMode = true
+                tutorialStep = TutorialStep.RENAME_BOARD
+            }
+            TutorialStep.RENAME_BOARD -> {
+                tutorialAwaitingRenameClose = true
+                renameOpen = true
+            }
+            TutorialStep.FILTER_ITEMS,
+            TutorialStep.SORT_ITEMS -> Unit
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = appBg,
@@ -317,7 +509,9 @@ fun StockManagerScreen(
                         CenterAlignedTopAppBar(
                             title = {
                                 Box(
-                                    modifier = Modifier.fillMaxHeight(),
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .tutorialTarget(TutorialTarget.BOARD_TITLE, tutorialTargets),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -330,7 +524,10 @@ fun StockManagerScreen(
                                 }
                             },
                             navigationIcon = {
-                                IconButton(onClick = { drawerOpen = true }) {
+                                IconButton(
+                                    onClick = { drawerOpen = true },
+                                    modifier = Modifier.tutorialTarget(TutorialTarget.NAV_MENU, tutorialTargets)
+                                ) {
                                     Icon(Icons.Filled.MoreVert, contentDescription = "メニュー")
                                 }
                             },
@@ -363,14 +560,18 @@ fun StockManagerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         FilterSegmentedRow(
-                            modifier = Modifier.weight(1.3f),
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .tutorialTarget(TutorialTarget.FILTER_ROW, tutorialTargets),
                             showStock = ui.showStock,
                             showOut = ui.showOut,
                             onStockClick = { viewModel.toggleStock() },
                             onOutClick = { viewModel.toggleOut() }
                         )
                         SortSplitButton(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .tutorialTarget(TutorialTarget.SORT_BUTTON, tutorialTargets),
                             label = ui.sortMode.label,
                             menuOpen = sortMenuOpen,
                             onMenuOpenChange = { sortMenuOpen = it },
@@ -514,7 +715,8 @@ fun StockManagerScreen(
                             .align(Alignment.BottomStart)
                             .navigationBarsPadding()
                             .padding(start = 24.dp, bottom = 24.dp)
-                            .size(56.dp),
+                            .size(56.dp)
+                            .tutorialTarget(TutorialTarget.ITEM_EDIT_FAB, tutorialTargets),
                         shape = CircleShape,
                         containerColor = if (editMode) colorScheme.errorContainer else colorScheme.surface,
                         contentColor = if (editMode) colorScheme.onErrorContainer else colorScheme.primary
@@ -530,7 +732,8 @@ fun StockManagerScreen(
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
                             .padding(end = 24.dp, bottom = 24.dp)
-                            .size(56.dp),
+                            .size(56.dp)
+                            .tutorialTarget(TutorialTarget.ITEM_ADD_FAB, tutorialTargets),
                         shape = CircleShape,
                         containerColor = colorScheme.surface,
                         contentColor = colorScheme.primary
@@ -571,6 +774,8 @@ fun StockManagerScreen(
             boards = ui.boards.map { it.board },
             currentBoardId = ui.currentBoardId,
             editMode = boardEditMode,
+            boardEditButtonModifier = Modifier.tutorialTarget(TutorialTarget.BOARD_EDIT, tutorialTargets),
+            addBoardButtonModifier = Modifier.tutorialTarget(TutorialTarget.BOARD_ADD, tutorialTargets),
             onSelectBoard = { id ->
                 viewModel.selectBoard(id)
                 drawerOpen = false
@@ -612,7 +817,7 @@ fun StockManagerScreen(
                     }
                 }
             },
-            onOpenHowToUse = { appInfoScreenType = AppInfoScreenType.HOW_TO_USE },
+            onOpenHowToUse = { startTutorial() },
             onOpenAbout = { appInfoScreenType = AppInfoScreenType.ABOUT },
             onOpenOssLicenses = { appInfoScreenType = AppInfoScreenType.OSS_LICENSES },
             onOpenPrivacyPolicy = { appInfoScreenType = AppInfoScreenType.PRIVACY_POLICY },
@@ -637,6 +842,22 @@ fun StockManagerScreen(
                 renameOpen = false
             }
         )
+
+        if (!hideTutorialOverlay) {
+            TutorialOverlay(
+                step = tutorialStep,
+                targetRect = tutorialTargetRect,
+                canAdvance = tutorialCanAdvance,
+                supportingMessage = tutorialSupportingMessage,
+                onTargetTap = { onTutorialTargetTap() },
+                onAdvance = {
+                    if (tutorialCanAdvance) {
+                        advanceTutorial()
+                    }
+                },
+                onSkip = { closeTutorial() }
+            )
+        }
     }
 }
 
@@ -662,5 +883,14 @@ private fun EmptyHomeMessage(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+private fun Modifier.tutorialTarget(
+    target: TutorialTarget,
+    registry: MutableMap<TutorialTarget, Rect>
+): Modifier {
+    return this.onGloballyPositioned { coordinates ->
+        registry[target] = coordinates.boundsInRoot()
     }
 }

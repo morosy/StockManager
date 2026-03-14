@@ -36,29 +36,16 @@ class StockRepository(private val db: AppDatabase) {
         boardDao.updateBoardOrders(orderedIds)
     }
 
-    suspend fun ensureSeeded() {
-        if (stockDao.countBoards() > 0) {
-            return
-        }
-
-        val now = System.currentTimeMillis()
-        val homeId = stockDao.insertBoard(
-            BoardEntity(
-                name = "ボード１".take(MAX_BOARD_NAME_LENGTH),
-                createdAt = now,
-                sortOrder = 0
-            )
-        )
-
-        settingsDao.upsert(SettingsEntity(id = 0, currentBoardId = homeId))
-    }
-
     suspend fun addBoard(name: String): Long {
         val normalized = name.trim().take(MAX_BOARD_NAME_LENGTH)
         require(normalized.isNotEmpty()) { "board name is empty" }
         val nextOrder = stockDao.countBoards()
         val now = System.currentTimeMillis()
         return stockDao.insertBoard(BoardEntity(name = normalized, createdAt = now, sortOrder = nextOrder))
+    }
+
+    suspend fun markTutorialSeen() {
+        updateSettings { it.copy(tutorialSeen = true) }
     }
 
     suspend fun deleteBoard(boardId: Long) {
