@@ -63,6 +63,7 @@ import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
 import com.morosy.stockmanager.data.db.StockItemStatus
 import com.morosy.stockmanager.model.SortMode
+import com.morosy.stockmanager.model.statusRank
 import com.morosy.stockmanager.ui.components.FilterSegmentedRow
 import com.morosy.stockmanager.ui.components.MagnetCard
 import com.morosy.stockmanager.ui.components.SortSplitButton
@@ -222,10 +223,10 @@ fun StockManagerScreen(
             SortMode.NEWEST -> filtered.sortedByDescending { it.createdAt }
             SortMode.NAME -> filtered.sortedBy { it.name }
             SortMode.STOCK_FIRST -> filtered.sortedWith(
-                compareBy({ StockItemStatus.normalize(it.status) == StockItemStatus.OUT_OF_STOCK }, { it.name })
+                compareBy({ ui.sortMode.statusRank(it.status) }, { it.name })
             )
             SortMode.OUT_FIRST -> filtered.sortedWith(
-                compareBy({ StockItemStatus.normalize(it.status) != StockItemStatus.OUT_OF_STOCK }, { it.name })
+                compareBy({ ui.sortMode.statusRank(it.status) }, { it.name })
             )
         }
     }

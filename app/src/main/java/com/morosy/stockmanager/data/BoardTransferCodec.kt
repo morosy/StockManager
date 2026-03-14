@@ -109,13 +109,15 @@ object BoardTransferCodec {
         sb.appendLine(csvLine("boardName", board.name))
         sb.appendLine(csvLine("boardCreatedAt", board.createdAt.toString()))
         sb.appendLine()
-        sb.appendLine("type,exportId,name,inStock,createdAt,updatedAt")
+        sb.appendLine("type,exportId,name,status,inStock,createdAt,updatedAt")
         boardWithItems.items.forEach { item ->
+            val status = StockItemStatus.normalize(item.status)
             sb.appendLine(
                 csvLine(
                     "item",
                     item.exportId ?: "i-${UUID.randomUUID()}",
                     item.name,
+                    status.toString(),
                     item.inStock.toString(),
                     item.createdAt.toString(),
                     item.updatedAt.toString()
@@ -187,6 +189,7 @@ object BoardTransferCodec {
         val meta = mutableMapOf<String, String>()
         val items = mutableListOf<BoardImportItem>()
         var inItems = false
+        var itemHeaderIndex = emptyMap<String, Int>()
         for (line in lines) {
             if (line.isBlank()) {
                 continue
@@ -199,6 +202,7 @@ object BoardTransferCodec {
             if (!inItems) {
                 if (cols[0] == "type") {
                     inItems = true
+                    itemHeaderIndex = cols.withIndex().associate { it.value to it.index }
                     continue
                 }
                 if (cols[0] == "meta_key" || cols.size < 2) {
@@ -218,13 +222,12 @@ object BoardTransferCodec {
             if (itemName.isEmpty()) {
                 continue
             }
+            val status = parseCsvItemStatus(cols, itemHeaderIndex)
             items += BoardImportItem(
                 name = itemName,
-                status = StockItemStatus.fromLegacyInStock(
-                    cols.getOrNull(3)?.toBooleanStrictOrNull() ?: true
-                ),
-                createdAt = cols.getOrNull(4)?.toLongOrNull(),
-                updatedAt = cols.getOrNull(5)?.toLongOrNull(),
+                status = status,
+                createdAt = cols.getOrNull(itemHeaderIndex["createdAt"] ?: 4)?.toLongOrNull(),
+                updatedAt = cols.getOrNull(itemHeaderIndex["updatedAt"] ?: 5)?.toLongOrNull(),
                 exportId = cols.getOrNull(1)?.takeIf { it.isNotBlank() }
             )
         }
@@ -295,6 +298,23 @@ object BoardTransferCodec {
     private fun sanitizeFileName(name: String): String {
         return name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
     }
+}
+
+private fun parseCsvItemStatus(cols: List<String>, itemHeaderIndex: Map<String, Int>): Int {
+    val statusIndex = itemHeaderIndex["status"]
+    val inStockIndex = itemHeaderIndex["inStock"]
+
+    statusIndex
+        ?.let(cols::getOrNull)
+        ?.toIntOrNull()
+        ?.let { rawStatus ->
+            if (rawStatus in StockItemStatus.IN_STOCK..StockItemStatus.OUT_OF_STOCK) {
+                return rawStatus
+            }
+        }
+
+    val legacyInStock = cols.getOrNull(inStockIndex ?: 3)?.toBooleanStrictOrNull() ?: true
+    return StockItemStatus.fromLegacyInStock(legacyInStock)
 }
 
 private fun JSONObject.optLongOrNull(key: String): Long? {
