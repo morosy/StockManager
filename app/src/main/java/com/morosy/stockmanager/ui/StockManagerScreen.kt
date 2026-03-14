@@ -106,6 +106,7 @@ fun StockManagerScreen(
     val currentBoardEntity = currentBoardWithItems?.board
     val currentBoardName = currentBoardEntity?.name ?: ""
     val currentItems = currentBoardWithItems?.items ?: emptyList()
+    val hasBoard = currentBoardEntity != null
     val emptyStateTitle = when {
         ui.boards.isEmpty() -> "ボートがありません"
         currentItems.isEmpty() -> "アイテムがありません"
@@ -295,6 +296,13 @@ fun StockManagerScreen(
         }
     }
 
+    LaunchedEffect(hasBoard) {
+        if (!hasBoard) {
+            editMode = false
+            addItemModalOpen = false
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = appBg,
@@ -477,7 +485,7 @@ fun StockManagerScreen(
                     )
                 }
 
-                if (editMode) {
+                if (editMode && hasBoard) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -494,26 +502,28 @@ fun StockManagerScreen(
                     }
                 }
 
-                FloatingActionButton(
-                    onClick = {
-                        editMode = !editMode
-                        if (editMode) {
-                            addItemModalOpen = false
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .navigationBarsPadding()
-                        .padding(start = 24.dp, bottom = 24.dp)
-                        .size(56.dp),
-                    shape = CircleShape,
-                    containerColor = if (editMode) colorScheme.errorContainer else colorScheme.surface,
-                    contentColor = if (editMode) colorScheme.onErrorContainer else colorScheme.primary
-                ) {
-                    Icon(Icons.Filled.Edit, contentDescription = "編集")
+                if (hasBoard) {
+                    FloatingActionButton(
+                        onClick = {
+                            editMode = !editMode
+                            if (editMode) {
+                                addItemModalOpen = false
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .navigationBarsPadding()
+                            .padding(start = 24.dp, bottom = 24.dp)
+                            .size(56.dp),
+                        shape = CircleShape,
+                        containerColor = if (editMode) colorScheme.errorContainer else colorScheme.surface,
+                        contentColor = if (editMode) colorScheme.onErrorContainer else colorScheme.primary
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = "編集")
+                    }
                 }
 
-                if (!editMode) {
+                if (hasBoard && !editMode) {
                     FloatingActionButton(
                         onClick = { addItemModalOpen = true },
                         modifier = Modifier
