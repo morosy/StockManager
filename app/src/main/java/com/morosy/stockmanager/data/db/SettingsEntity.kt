@@ -22,6 +22,8 @@ data class SettingsEntity(
     val sortMode: String = "OLDEST",
 
     @ColumnInfo(name = "query")
-    val query: String = ""
-)
+    val query: String = "",
 
+    @ColumnInfo(name = "tutorial_seen")
+    val tutorialSeen: Boolean = false
+)

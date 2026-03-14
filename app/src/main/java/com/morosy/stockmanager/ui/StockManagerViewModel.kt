@@ -25,7 +25,8 @@ data class StockManagerUiState(
     val showStock: Boolean = true,
     val showOut: Boolean = true,
     val sortMode: SortMode = SortMode.OLDEST,
-    val query: String = ""
+    val query: String = "",
+    val tutorialSeen: Boolean = false
 )
 
 class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
@@ -51,19 +52,14 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
                 showStock = s.showStock,
                 showOut = s.showOut,
                 sortMode = SortMode.valueOf(s.sortMode),
-                query = s.query
+                query = s.query,
+                tutorialSeen = s.tutorialSeen
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = StockManagerUiState()
         )
-
-    init {
-        viewModelScope.launch {
-            repo.ensureSeeded()
-        }
-    }
 
     fun setQuery(value: String) {
         viewModelScope.launch {
@@ -192,6 +188,12 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
                 repo.updateSettings { it.copy(currentBoardId = newBoardId) }
             }
             onResult(result)
+        }
+    }
+
+    fun markTutorialSeen() {
+        viewModelScope.launch {
+            repo.markTutorialSeen()
         }
     }
 }

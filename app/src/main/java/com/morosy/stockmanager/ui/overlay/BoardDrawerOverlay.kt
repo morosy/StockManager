@@ -76,6 +76,8 @@ fun BoardDrawerOverlay(
     boards: List<BoardEntity>,
     currentBoardId: Long,
     editMode: Boolean,
+    boardEditButtonModifier: Modifier = Modifier,
+    addBoardButtonModifier: Modifier = Modifier,
     onSelectBoard: (Long) -> Unit,
     onClose: () -> Unit,
     onEnterEdit: () -> Unit,
@@ -453,7 +455,8 @@ fun BoardDrawerOverlay(
                             onClick = { onEnterEdit() },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .then(boardEditButtonModifier),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("ボードを追加・編集")
@@ -463,7 +466,8 @@ fun BoardDrawerOverlay(
                             onClick = { onAddBoard() },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .then(addBoardButtonModifier),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF6750A4),
