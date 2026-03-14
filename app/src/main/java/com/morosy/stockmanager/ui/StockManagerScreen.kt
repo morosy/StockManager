@@ -106,6 +106,16 @@ fun StockManagerScreen(
     val currentBoardEntity = currentBoardWithItems?.board
     val currentBoardName = currentBoardEntity?.name ?: ""
     val currentItems = currentBoardWithItems?.items ?: emptyList()
+    val emptyStateTitle = when {
+        ui.boards.isEmpty() -> "ボートがありません"
+        currentItems.isEmpty() -> "アイテムがありません"
+        else -> null
+    }
+    val emptyStateMessage = when {
+        ui.boards.isEmpty() -> "ボードを追加してください"
+        currentItems.isEmpty() -> "アイテムを追加してください"
+        else -> null
+    }
 
     var sortMenuOpen by remember { mutableStateOf(false) }
     var searchOpen by remember { mutableStateOf(false) }
@@ -399,32 +409,42 @@ fun StockManagerScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(filteredSortedItems, key = { it.id }) { item ->
-                        MagnetCard(
-                            item = item,
-                            stockBg = stockBg,
-                            stockText = stockText,
-                            stockBorder = stockBorder,
-                            outBg = outBg,
-                            outText = outText,
-                            editMode = editMode,
-                            isDeleting = deletingIds.contains(item.id),
-                            onToggle = {
-                                if (!editMode) {
-                                    viewModel.toggleItem(item)
-                                }
-                            },
-                            onEditName = { openRenameItem(item.id, item.name) },
-                            onDelete = { requestDeleteItem(item.id) }
-                        )
+                if (emptyStateTitle != null && emptyStateMessage != null) {
+                    EmptyHomeMessage(
+                        title = emptyStateTitle,
+                        message = emptyStateMessage,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 24.dp)
+                    )
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredSortedItems, key = { it.id }) { item ->
+                            MagnetCard(
+                                item = item,
+                                stockBg = stockBg,
+                                stockText = stockText,
+                                stockBorder = stockBorder,
+                                outBg = outBg,
+                                outText = outText,
+                                editMode = editMode,
+                                isDeleting = deletingIds.contains(item.id),
+                                onToggle = {
+                                    if (!editMode) {
+                                        viewModel.toggleItem(item)
+                                    }
+                                },
+                                onEditName = { openRenameItem(item.id, item.name) },
+                                onDelete = { requestDeleteItem(item.id) }
+                            )
+                        }
                     }
                 }
 
@@ -606,6 +626,31 @@ fun StockManagerScreen(
                 currentBoardEntity?.let { viewModel.renameBoard(it.id, newName) }
                 renameOpen = false
             }
+        )
+    }
+}
+
+@Composable
+private fun EmptyHomeMessage(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
