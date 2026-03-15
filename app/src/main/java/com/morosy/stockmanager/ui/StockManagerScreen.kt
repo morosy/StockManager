@@ -826,6 +826,21 @@ fun StockManagerScreen(
             onOpenHowToUse = { startTutorial() },
             onOpenAbout = { appInfoScreenType = AppInfoScreenType.ABOUT },
             onOpenOssLicenses = { appInfoScreenType = AppInfoScreenType.OSS_LICENSES },
+            onOpenContact = {
+                Toast.makeText(context, "外部サイトへアクセスします", Toast.LENGTH_SHORT).show()
+                scope.launch(Dispatchers.Main) {
+                    delay(600)
+                    runCatching {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://morosy.github.io/contact.html")
+                        )
+                        context.startActivity(intent)
+                    }.onFailure { e ->
+                        Toast.makeText(context, "ブラウザを起動できませんでした: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
             onOpenPrivacyPolicy = { appInfoScreenType = AppInfoScreenType.PRIVACY_POLICY },
             onReorderBoards = { ids -> viewModel.reorderBoards(ids) }
         )

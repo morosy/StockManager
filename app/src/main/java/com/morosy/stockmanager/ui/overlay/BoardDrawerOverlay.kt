@@ -95,6 +95,7 @@ fun BoardDrawerOverlay(
     onOpenHowToUse: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenOssLicenses: () -> Unit,
+    onOpenContact: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onReorderBoards: (List<Long>) -> Unit,
 ) {
@@ -222,6 +223,13 @@ fun BoardDrawerOverlay(
                                     onClick = {
                                         menuOpen.value = false
                                         onOpenHowToUse()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("お問い合わせ") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onOpenContact()
                                     }
                                 )
                                 DropdownMenuItem(
