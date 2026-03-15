@@ -26,7 +26,9 @@ data class StockManagerUiState(
     val showOut: Boolean = true,
     val sortMode: SortMode = SortMode.OLDEST,
     val query: String = "",
-    val tutorialSeen: Boolean = false
+    val tutorialSeen: Boolean = false,
+    val hasStoredSettings: Boolean = false,
+    val settingsResolved: Boolean = false
 )
 
 class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
@@ -53,7 +55,9 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
                 showOut = s.showOut,
                 sortMode = SortMode.valueOf(s.sortMode),
                 query = s.query,
-                tutorialSeen = s.tutorialSeen
+                tutorialSeen = s.tutorialSeen,
+                hasStoredSettings = settings != null,
+                settingsResolved = true
             )
         }.stateIn(
             scope = viewModelScope,

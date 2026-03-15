@@ -21,10 +21,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -37,6 +36,7 @@ fun TutorialOverlay(
     canAdvance: Boolean,
     supportingMessage: String? = null,
     onTargetTap: () -> Unit,
+    onBack: () -> Unit,
     onAdvance: () -> Unit,
     onSkip: () -> Unit
 ) {
@@ -45,6 +45,7 @@ fun TutorialOverlay(
     } else {
         Alignment.BottomCenter
     }
+    val highlightRadius = targetRect?.let { (maxOf(it.width, it.height) / 2f) + 24f }
 
     Box(
         modifier = Modifier
@@ -63,7 +64,9 @@ fun TutorialOverlay(
                             val change = event.changes.firstOrNull() ?: continue
                             val position = change.position
                             val isUp = !change.pressed
-                            if (isUp && targetRect != null && targetRect.contains(position)) {
+                            val insideHighlight = targetRect != null && highlightRadius != null &&
+                                (position - targetRect.center).getDistance() <= highlightRadius
+                            if (isUp && insideHighlight) {
                                 onTargetTap()
                             }
                             change.consume()
@@ -73,20 +76,12 @@ fun TutorialOverlay(
                 .drawWithContent {
                     drawContent()
                     drawRect(Color.Black.copy(alpha = 0.68f))
-                    if (targetRect != null) {
-                        drawRoundRect(
+                    if (targetRect != null && highlightRadius != null) {
+                        drawCircle(
                             color = Color.Transparent,
-                            topLeft = targetRect.topLeft,
-                            size = targetRect.size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(24f, 24f),
+                            radius = highlightRadius,
+                            center = targetRect.center,
                             blendMode = BlendMode.Clear
-                        )
-                        drawRoundRect(
-                            color = Color.White,
-                            topLeft = targetRect.topLeft,
-                            size = targetRect.size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(24f, 24f),
-                            style = Stroke(width = 4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 12f)))
                         )
                     }
                 }
@@ -111,44 +106,57 @@ fun TutorialOverlay(
                     text = step.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Text(
                     text = step.message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 if (supportingMessage != null) {
                     Text(
                         text = supportingMessage,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                if (!step.requiresTargetTap) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                ) {
+                    Button(
+                        onClick = onBack,
+                        enabled = step.previous() != null,
+                        colors = ButtonDefaults.buttonColors(),
+                    ) {
+                        Text("戻る")
+                    }
                     Button(
                         onClick = onAdvance,
                         enabled = canAdvance,
-                        colors = ButtonDefaults.buttonColors()
+                        colors = ButtonDefaults.buttonColors(),
                     ) {
-                        Text(step.actionLabel)
+                        Text(if (step.next() == null) "完了" else "次へ")
                     }
-                } else if (!canAdvance || targetRect == null) {
+                }
+                if (!canAdvance) {
                     Text(
-                        text = if (targetRect == null) "表示を準備しています..." else step.actionLabel,
+                        text = "表示を準備しています...",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text(
-                        text = step.actionLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 TextButton(
                     onClick = onSkip,
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text("スキップ")
                 }

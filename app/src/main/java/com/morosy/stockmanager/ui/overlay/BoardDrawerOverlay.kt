@@ -78,6 +78,10 @@ fun BoardDrawerOverlay(
     editMode: Boolean,
     boardEditButtonModifier: Modifier = Modifier,
     addBoardButtonModifier: Modifier = Modifier,
+    boardListModifier: Modifier = Modifier,
+    currentBoardItemModifier: Modifier = Modifier,
+    howToUseMenuItemModifier: Modifier = Modifier,
+    forceMenuExpanded: Boolean = false,
     onSelectBoard: (Long) -> Unit,
     onClose: () -> Unit,
     onEnterEdit: () -> Unit,
@@ -123,6 +127,10 @@ fun BoardDrawerOverlay(
     var draggingBoardId by remember { mutableStateOf<Long?>(null) }
     var draggingIndex by remember { mutableIntStateOf(-1) }
     var draggingOffsetY by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(forceMenuExpanded) {
+        menuOpen.value = forceMenuExpanded
+    }
 
     if (open || scrim.value > 0f) {
         Box(
@@ -209,6 +217,7 @@ fun BoardDrawerOverlay(
                                     }
                                 )
                                 DropdownMenuItem(
+                                    modifier = howToUseMenuItemModifier,
                                     text = { Text("使い方") },
                                     onClick = {
                                         menuOpen.value = false
@@ -243,7 +252,9 @@ fun BoardDrawerOverlay(
                     val renderBoards = if (editMode) localBoards else boards
 
                     LazyColumn(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(boardListModifier),
                         state = listState
                     ) {
                         items(renderBoards, key = { it.id }) { b ->
@@ -374,7 +385,8 @@ fun BoardDrawerOverlay(
                                             ambientShadowColor = Color.Black.copy(alpha = 0.24f)
                                             spotShadowColor = Color.Black.copy(alpha = 0.32f)
                                         }
-                                        .zIndex(if (isDragging) 2f else 0f),
+                                        .zIndex(if (isDragging) 2f else 0f)
+                                        .then(if (selected && !editMode) currentBoardItemModifier else Modifier),
                                     color = bg,
                                     shape = RoundedCornerShape(12.dp),
                                     tonalElevation = if (selected && !isDragging) 2.dp else 0.dp,

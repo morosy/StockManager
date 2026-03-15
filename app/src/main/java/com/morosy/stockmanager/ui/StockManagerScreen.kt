@@ -56,9 +56,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -149,8 +149,6 @@ fun StockManagerScreen(
     var tutorialVisible by rememberSaveable { mutableStateOf(false) }
     var tutorialStep by rememberSaveable { mutableStateOf(TutorialStep.OPEN_BOARD_LIST) }
     var tutorialAutoStarted by rememberSaveable { mutableStateOf(false) }
-    var tutorialAwaitingItemModalClose by remember { mutableStateOf(false) }
-    var tutorialAwaitingRenameClose by remember { mutableStateOf(false) }
     var searchFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -190,8 +188,6 @@ fun StockManagerScreen(
     fun startTutorial() {
         tutorialVisible = true
         tutorialStep = TutorialStep.OPEN_BOARD_LIST
-        tutorialAwaitingItemModalClose = false
-        tutorialAwaitingRenameClose = false
         drawerOpen = false
         boardEditMode = false
         editMode = false
@@ -205,8 +201,6 @@ fun StockManagerScreen(
 
     fun closeTutorial() {
         tutorialVisible = false
-        tutorialAwaitingItemModalClose = false
-        tutorialAwaitingRenameClose = false
         boardEditMode = false
         sortMenuOpen = false
     }
@@ -341,8 +335,8 @@ fun StockManagerScreen(
         }
     }
 
-    LaunchedEffect(ui.tutorialSeen) {
-        if (!ui.tutorialSeen && !tutorialAutoStarted) {
+    LaunchedEffect(ui.tutorialSeen, ui.hasStoredSettings, ui.settingsResolved) {
+        if (ui.settingsResolved && !ui.tutorialSeen && !ui.hasStoredSettings && !tutorialAutoStarted) {
             tutorialAutoStarted = true
             startTutorial()
         }
@@ -356,6 +350,8 @@ fun StockManagerScreen(
         if (!hasBoard) {
             tutorialTargets.remove(TutorialTarget.ITEM_ADD_FAB)
             tutorialTargets.remove(TutorialTarget.ITEM_EDIT_FAB)
+            tutorialTargets.remove(TutorialTarget.BOARD_LIST)
+            tutorialTargets.remove(TutorialTarget.CURRENT_BOARD_ITEM)
             tutorialTargets.remove(TutorialTarget.BOARD_TITLE)
             tutorialTargets.remove(TutorialTarget.FILTER_ROW)
             tutorialTargets.remove(TutorialTarget.SORT_BUTTON)
@@ -396,6 +392,12 @@ fun StockManagerScreen(
                 drawerOpen = false
                 boardEditMode = false
             }
+            TutorialStep.BOARD_LIST_OVERVIEW,
+            TutorialStep.BOARD_DISPLAY_SWITCH -> {
+                drawerOpen = true
+                boardEditMode = false
+                editMode = false
+            }
             TutorialStep.RENAME_BOARD -> {
                 drawerOpen = false
                 boardEditMode = false
@@ -413,36 +415,10 @@ fun StockManagerScreen(
         }
     }
 
-    LaunchedEffect(tutorialVisible, tutorialStep, tutorialAwaitingItemModalClose, addItemModalOpen) {
-        if (
-            tutorialVisible &&
-            tutorialStep == TutorialStep.ADD_ITEM &&
-            tutorialAwaitingItemModalClose &&
-            !addItemModalOpen
-        ) {
-            tutorialAwaitingItemModalClose = false
-            tutorialStep = TutorialStep.EDIT_ITEM
-        }
-    }
-
-    LaunchedEffect(tutorialVisible, tutorialStep, tutorialAwaitingRenameClose, renameOpen) {
-        if (
-            tutorialVisible &&
-            tutorialStep == TutorialStep.RENAME_BOARD &&
-            tutorialAwaitingRenameClose &&
-            !renameOpen
-        ) {
-            tutorialAwaitingRenameClose = false
-            tutorialStep = TutorialStep.FILTER_ITEMS
-        }
-    }
-
     val tutorialTargetRect = tutorialTargets[tutorialStep.target]
     val hideTutorialOverlay =
         !tutorialVisible ||
-            (tutorialStep == TutorialStep.ADD_BOARD && boardAddModalOpen) ||
-            (tutorialStep == TutorialStep.ADD_ITEM && addItemModalOpen) ||
-            (tutorialStep == TutorialStep.RENAME_BOARD && renameOpen)
+            (tutorialStep == TutorialStep.ADD_BOARD && boardAddModalOpen)
 
     val tutorialSupportingMessage = when {
         tutorialStep == TutorialStep.ADD_BOARD && ui.boards.isEmpty() -> "ボードを追加すると次へ進めます"
@@ -451,18 +427,8 @@ fun StockManagerScreen(
     }
 
     val tutorialCanAdvance = when (tutorialStep) {
-        TutorialStep.FILTER_ITEMS,
-        TutorialStep.SORT_ITEMS -> tutorialTargetRect != null
+        TutorialStep.ADD_BOARD -> tutorialTargetRect != null || ui.boards.isNotEmpty()
         else -> tutorialTargetRect != null
-    }
-
-    fun advanceTutorial() {
-        val next = tutorialStep.next()
-        if (next == null) {
-            closeTutorial()
-        } else {
-            tutorialStep = next
-        }
     }
 
     fun onTutorialTargetTap() {
@@ -479,19 +445,51 @@ fun StockManagerScreen(
                 boardAddModalOpen = true
             }
             TutorialStep.ADD_ITEM -> {
-                tutorialAwaitingItemModalClose = true
-                addItemModalOpen = true
+                tutorialStep = TutorialStep.EDIT_ITEM
             }
             TutorialStep.EDIT_ITEM -> {
                 editMode = true
-                tutorialStep = TutorialStep.RENAME_BOARD
+                tutorialStep = TutorialStep.BOARD_LIST_OVERVIEW
             }
-            TutorialStep.RENAME_BOARD -> {
-                tutorialAwaitingRenameClose = true
-                renameOpen = true
-            }
+            TutorialStep.BOARD_LIST_OVERVIEW -> tutorialStep = TutorialStep.BOARD_DISPLAY_SWITCH
+            TutorialStep.BOARD_DISPLAY_SWITCH -> tutorialStep = TutorialStep.RENAME_BOARD
+            TutorialStep.RENAME_BOARD -> tutorialStep = TutorialStep.FILTER_ITEMS
             TutorialStep.FILTER_ITEMS,
             TutorialStep.SORT_ITEMS -> Unit
+        }
+    }
+
+    fun advanceTutorial() {
+        when (tutorialStep) {
+            TutorialStep.OPEN_BOARD_LIST,
+            TutorialStep.OPEN_BOARD_EDIT,
+            TutorialStep.ADD_ITEM,
+            TutorialStep.EDIT_ITEM,
+            TutorialStep.BOARD_LIST_OVERVIEW,
+            TutorialStep.BOARD_DISPLAY_SWITCH,
+            TutorialStep.RENAME_BOARD -> onTutorialTargetTap()
+            TutorialStep.ADD_BOARD -> {
+                if (ui.boards.isNotEmpty()) {
+                    tutorialStep = TutorialStep.ADD_ITEM
+                } else {
+                    onTutorialTargetTap()
+                }
+            }
+            TutorialStep.FILTER_ITEMS,
+            TutorialStep.SORT_ITEMS -> {
+                val next = tutorialStep.next()
+                if (next == null) {
+                    closeTutorial()
+                } else {
+                    tutorialStep = next
+                }
+            }
+        }
+    }
+
+    fun goBackTutorial() {
+        tutorialStep.previous()?.let { previous ->
+            tutorialStep = previous
         }
     }
 
@@ -509,16 +507,16 @@ fun StockManagerScreen(
                         CenterAlignedTopAppBar(
                             title = {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .tutorialTarget(TutorialTarget.BOARD_TITLE, tutorialTargets),
+                                    modifier = Modifier.fillMaxHeight(),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = currentBoardName,
-                                        modifier = Modifier.clickable(enabled = currentBoardEntity != null) {
-                                            renameOpen = true
-                                        },
+                                        modifier = Modifier
+                                            .tutorialTarget(TutorialTarget.BOARD_TITLE, tutorialTargets)
+                                            .clickable(enabled = currentBoardEntity != null) {
+                                                renameOpen = true
+                                            },
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -776,6 +774,8 @@ fun StockManagerScreen(
             editMode = boardEditMode,
             boardEditButtonModifier = Modifier.tutorialTarget(TutorialTarget.BOARD_EDIT, tutorialTargets),
             addBoardButtonModifier = Modifier.tutorialTarget(TutorialTarget.BOARD_ADD, tutorialTargets),
+            boardListModifier = Modifier.tutorialTarget(TutorialTarget.BOARD_LIST, tutorialTargets),
+            currentBoardItemModifier = Modifier.tutorialTarget(TutorialTarget.CURRENT_BOARD_ITEM, tutorialTargets),
             onSelectBoard = { id ->
                 viewModel.selectBoard(id)
                 drawerOpen = false
@@ -850,6 +850,7 @@ fun StockManagerScreen(
                 canAdvance = tutorialCanAdvance,
                 supportingMessage = tutorialSupportingMessage,
                 onTargetTap = { onTutorialTargetTap() },
+                onBack = { goBackTutorial() },
                 onAdvance = {
                     if (tutorialCanAdvance) {
                         advanceTutorial()
