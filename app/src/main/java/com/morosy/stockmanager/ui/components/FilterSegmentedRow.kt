@@ -15,11 +15,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
 @Composable
 private fun EqualWidthRow(
     modifier: Modifier = Modifier,
+    gapPx: Int = 0,
     content: @Composable () -> Unit,
 ) {
     Layout(
@@ -28,7 +30,8 @@ private fun EqualWidthRow(
     ) { measurables, constraints ->
         val count = measurables.size.coerceAtLeast(1)
         val totalWidth = constraints.maxWidth
-        val childWidth = totalWidth / count
+        val totalGap = gapPx * (count - 1)
+        val childWidth = (totalWidth - totalGap) / count
 
         val childConstraints = constraints.copy(
             minWidth = childWidth,
@@ -42,7 +45,7 @@ private fun EqualWidthRow(
             var x = 0
             placeables.forEach { p ->
                 p.placeRelative(x, (height - p.height) / 2)
-                x += childWidth
+                x += childWidth + gapPx
             }
         }
     }
@@ -56,6 +59,7 @@ fun FilterSegmentedRow(
     onStockClick: () -> Unit,
     onOutClick: () -> Unit,
 ) {
+    val density = LocalDensity.current
     Surface(
         modifier = modifier.height(44.dp),
         shape = RoundedCornerShape(12.dp),
@@ -65,7 +69,8 @@ fun FilterSegmentedRow(
         EqualWidthRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
+                .fillMaxHeight(),
+            gapPx = with(density) { 1.dp.roundToPx() }
         ) {
             SegItem(
                 label = "在庫",
