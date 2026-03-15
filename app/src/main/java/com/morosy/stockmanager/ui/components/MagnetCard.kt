@@ -91,6 +91,7 @@ fun MagnetCard(
         StockItemStatus.HIGHLIGHTED -> Triple(yellowBg, yellowText, BorderStroke(1.dp, yellowBorder))
         else -> Triple(outBg, outText, null)
     }
+    val cardShape = RoundedCornerShape(16.dp)
 
     LaunchedEffect(editMode, isDeleting) {
         if (editMode && !isDeleting) {
@@ -120,32 +121,33 @@ fun MagnetCard(
             Surface(
                 modifier = Modifier
                     .matchParentSize()
-                    .clickable {
-                        if (isFlipping) {
-                            return@clickable
-                        }
-                        if (editMode) {
-                            onEditName()
-                            return@clickable
-                        }
-                        val nextStatus = StockItemStatus.next(displayedStatus)
-                        scope.launch {
-                            isFlipping = true
-                            flipY.animateTo(
-                                90f,
-                                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
-                            )
-                            displayedStatus = nextStatus
-                            flipY.animateTo(
-                                180f,
-                                animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
-                            )
-                            flipY.snapTo(0f)
-                            onToggle()
-                            isFlipping = false
-                        }
-                    },
-                shape = RoundedCornerShape(16.dp),
+                    .clip(cardShape),
+                onClick = {
+                    if (isFlipping) {
+                        return@Surface
+                    }
+                    if (editMode) {
+                        onEditName()
+                        return@Surface
+                    }
+                    val nextStatus = StockItemStatus.next(displayedStatus)
+                    scope.launch {
+                        isFlipping = true
+                        flipY.animateTo(
+                            90f,
+                            animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
+                        )
+                        displayedStatus = nextStatus
+                        flipY.animateTo(
+                            180f,
+                            animationSpec = tween(durationMillis = 170, easing = FastOutSlowInEasing)
+                        )
+                        flipY.snapTo(0f)
+                        onToggle()
+                        isFlipping = false
+                    }
+                },
+                shape = cardShape,
                 color = bg,
                 border = border
             ) {

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -69,11 +70,13 @@ fun FilterSegmentedRow(
             SegItem(
                 label = "在庫",
                 selected = showStock,
+                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
                 onClick = onStockClick,
             )
             SegItem(
                 label = "欠品",
                 selected = showOut,
+                shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
                 onClick = onOutClick,
             )
         }
@@ -84,10 +87,14 @@ fun FilterSegmentedRow(
 private fun SegItem(
     label: String,
     selected: Boolean,
+    shape: RoundedCornerShape,
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxHeight(),
+        modifier = Modifier
+            .fillMaxHeight()
+            .clip(shape),
+        shape = shape,
         color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
         onClick = onClick,
     ) {
@@ -107,4 +114,3 @@ private fun SegItem(
         }
     }
 }
-
