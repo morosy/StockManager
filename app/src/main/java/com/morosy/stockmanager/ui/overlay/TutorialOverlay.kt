@@ -145,15 +145,6 @@ fun TutorialOverlay(
                         Text(if (step.next() == null) "完了" else "次へ")
                     }
                 }
-                if (!canAdvance) {
-                    Text(
-                        text = "表示を準備しています...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
                 TextButton(
                     onClick = onSkip,
                     modifier = Modifier.align(Alignment.CenterHorizontally)

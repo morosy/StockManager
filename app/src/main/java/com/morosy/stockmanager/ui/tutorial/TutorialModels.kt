@@ -3,6 +3,7 @@ package com.morosy.stockmanager.ui.tutorial
 import androidx.compose.ui.geometry.Rect
 
 enum class TutorialTarget {
+    NONE,
     NAV_MENU,
     BOARD_EDIT,
     BOARD_ADD,
@@ -69,6 +70,11 @@ enum class TutorialStep(
         target = TutorialTarget.SORT_BUTTON,
         title = "並び替え",
         message = "ソートボタンから、アイテムの並び順を切り替えられます。"
+    ),
+    TUTORIAL_REMINDER(
+        target = TutorialTarget.NONE,
+        title = "チュートリアルについて",
+        message = "このチュートリアルは、メニューの「使い方」よりいつでも見ることができます"
     );
 
     fun next(): TutorialStep? {

@@ -383,7 +383,8 @@ fun StockManagerScreen(
             }
             TutorialStep.ADD_ITEM,
             TutorialStep.FILTER_ITEMS,
-            TutorialStep.SORT_ITEMS -> {
+            TutorialStep.SORT_ITEMS,
+            TutorialStep.TUTORIAL_REMINDER -> {
                 drawerOpen = false
                 boardEditMode = false
                 editMode = false
@@ -422,12 +423,14 @@ fun StockManagerScreen(
 
     val tutorialSupportingMessage = when {
         tutorialStep == TutorialStep.ADD_BOARD && ui.boards.isEmpty() -> "ボードを追加すると次へ進めます"
+        tutorialStep == TutorialStep.TUTORIAL_REMINDER -> null
         tutorialTargetRect == null -> "表示を準備しています..."
         else -> null
     }
 
     val tutorialCanAdvance = when (tutorialStep) {
         TutorialStep.ADD_BOARD -> tutorialTargetRect != null || ui.boards.isNotEmpty()
+        TutorialStep.TUTORIAL_REMINDER -> true
         else -> tutorialTargetRect != null
     }
 
@@ -455,7 +458,8 @@ fun StockManagerScreen(
             TutorialStep.BOARD_DISPLAY_SWITCH -> tutorialStep = TutorialStep.RENAME_BOARD
             TutorialStep.RENAME_BOARD -> tutorialStep = TutorialStep.FILTER_ITEMS
             TutorialStep.FILTER_ITEMS,
-            TutorialStep.SORT_ITEMS -> Unit
+            TutorialStep.SORT_ITEMS,
+            TutorialStep.TUTORIAL_REMINDER -> Unit
         }
     }
 
@@ -484,6 +488,7 @@ fun StockManagerScreen(
                     tutorialStep = next
                 }
             }
+            TutorialStep.TUTORIAL_REMINDER -> closeTutorial()
         }
     }
 
