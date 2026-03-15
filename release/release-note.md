@@ -154,3 +154,25 @@ v1.1.5
 - Fixed bug in search functionality
 </en-US>
 ```
+
+```1.1.6
+<ja-JP>
+v1.1.6
+【新機能】
+- チュートリアル機能を実装
+- ソートの昇順・降順の切り替えを実装
+【修正点】
+- ボードが作成されていない時のUIを修正
+- ソート順の修正
+</ja-JP>
+
+<en-US>
+v1.1.6
+[New Features]
+- Implemented tutorial feature
+- Implemented ascending/descending sort toggle
+[Fixes]
+- Fixed UI when no boards are created
+- Fixed sort order
+</en-US>
+```
