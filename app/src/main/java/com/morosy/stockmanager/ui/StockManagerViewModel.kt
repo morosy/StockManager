@@ -13,6 +13,7 @@ import com.morosy.stockmanager.data.db.BoardWithItems
 import com.morosy.stockmanager.data.db.SettingsEntity
 import com.morosy.stockmanager.data.db.StockItemEntity
 import com.morosy.stockmanager.model.SortMode
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,7 +29,8 @@ data class StockManagerUiState(
     val query: String = "",
     val tutorialSeen: Boolean = false,
     val hasStoredSettings: Boolean = false,
-    val settingsResolved: Boolean = false
+    val settingsResolved: Boolean = false,
+    val shouldAutoStartTutorial: Boolean = false
 )
 
 class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
@@ -37,9 +39,10 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val boardsFlow = repo.observeBoardsWithItems()
     private val settingsFlow = repo.observeSettings()
+    private val autoStartTutorialFlow = MutableStateFlow(false)
 
     val uiState: StateFlow<StockManagerUiState> =
-        combine(boardsFlow, settingsFlow) { boards, settings ->
+        combine(boardsFlow, settingsFlow, autoStartTutorialFlow) { boards, settings, autoStartTutorial ->
             val s = settings ?: SettingsEntity()
 
             val safeCurrentId = when {
@@ -57,13 +60,20 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
                 query = s.query,
                 tutorialSeen = s.tutorialSeen,
                 hasStoredSettings = settings != null,
-                settingsResolved = true
+                settingsResolved = true,
+                shouldAutoStartTutorial = autoStartTutorial
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = StockManagerUiState()
         )
+
+    init {
+        viewModelScope.launch {
+            autoStartTutorialFlow.value = repo.ensureSeeded()
+        }
+    }
 
     fun setQuery(value: String) {
         viewModelScope.launch {

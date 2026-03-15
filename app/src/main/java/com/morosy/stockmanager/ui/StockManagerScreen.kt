@@ -336,8 +336,8 @@ fun StockManagerScreen(
         }
     }
 
-    LaunchedEffect(ui.tutorialSeen, ui.hasStoredSettings, ui.settingsResolved) {
-        if (ui.settingsResolved && !ui.tutorialSeen && !ui.hasStoredSettings && !tutorialAutoStarted) {
+    LaunchedEffect(ui.tutorialSeen, ui.shouldAutoStartTutorial, ui.settingsResolved) {
+        if (ui.settingsResolved && ui.shouldAutoStartTutorial && !ui.tutorialSeen && !tutorialAutoStarted) {
             tutorialAutoStarted = true
             startTutorial()
         }
@@ -423,15 +423,15 @@ fun StockManagerScreen(
             (tutorialStep == TutorialStep.ADD_BOARD && boardAddModalOpen)
 
     val tutorialSupportingMessage = when {
-        tutorialStep == TutorialStep.ADD_BOARD && ui.boards.isEmpty() -> "ボードを追加すると次へ進めます"
         tutorialStep == TutorialStep.TUTORIAL_REMINDER -> null
+        tutorialStep == TutorialStep.ADD_BOARD && ui.boards.isEmpty() -> "ボードを追加すると次へ進めます"
         tutorialTargetRect == null -> "表示を準備しています..."
         else -> null
     }
 
     val tutorialCanAdvance = when (tutorialStep) {
-        TutorialStep.ADD_BOARD -> tutorialTargetRect != null || ui.boards.isNotEmpty()
         TutorialStep.TUTORIAL_REMINDER -> true
+        TutorialStep.ADD_BOARD -> tutorialTargetRect != null && ui.boards.isNotEmpty()
         else -> tutorialTargetRect != null
     }
 

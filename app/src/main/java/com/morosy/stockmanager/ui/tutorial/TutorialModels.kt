@@ -34,7 +34,7 @@ enum class TutorialStep(
     ADD_BOARD(
         target = TutorialTarget.BOARD_ADD,
         title = "ボードを追加する",
-        message = "最初にボードを1つ追加してください。名前は自由に入力できます。"
+        message = "必要に応じて、ここからボードを追加できます。名前は自由に入力できます。"
     ),
     ADD_ITEM(
         target = TutorialTarget.ITEM_ADD_FAB,
