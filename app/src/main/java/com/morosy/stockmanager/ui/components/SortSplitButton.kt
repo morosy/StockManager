@@ -19,15 +19,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import com.morosy.stockmanager.model.SortMode
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.morosy.stockmanager.model.toggleArrowRotation
+import com.morosy.stockmanager.model.togglePair
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SortSplitButton(
     modifier: Modifier = Modifier,
-    label: String,
+    currentMode: SortMode,
     menuOpen: Boolean,
     onMenuOpenChange: (Boolean) -> Unit,
     onSelect: (SortMode) -> Unit
@@ -35,6 +38,7 @@ fun SortSplitButton(
     Box(modifier = modifier) {
         val containerColor = MaterialTheme.colorScheme.secondaryContainer
         val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        val toggleTarget = currentMode.togglePair()
 
         Row(
             modifier = Modifier
@@ -56,7 +60,7 @@ fun SortSplitButton(
                 ),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             ) {
-                Text(label, maxLines = 1)
+                Text(currentMode.label, maxLines = 1)
             }
 
             Box(
@@ -66,7 +70,13 @@ fun SortSplitButton(
             )
 
             FilledTonalButton(
-                onClick = { onMenuOpenChange(true) },
+                onClick = {
+                    if (toggleTarget != null) {
+                        onSelect(toggleTarget)
+                    } else {
+                        onMenuOpenChange(true)
+                    }
+                },
                 modifier = Modifier
                     .width(52.dp)
                     .fillMaxHeight(),
@@ -82,7 +92,8 @@ fun SortSplitButton(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = "並び替え"
+                    contentDescription = "並び順を切り替え",
+                    modifier = Modifier.rotate(currentMode.toggleArrowRotation())
                 )
             }
         }
@@ -100,4 +111,3 @@ fun SortSplitButton(
         }
     }
 }
-

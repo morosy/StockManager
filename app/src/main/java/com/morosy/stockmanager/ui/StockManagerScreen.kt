@@ -265,6 +265,7 @@ fun StockManagerScreen(
             SortMode.OLDEST -> filtered.sortedBy { it.createdAt }
             SortMode.NEWEST -> filtered.sortedByDescending { it.createdAt }
             SortMode.NAME -> filtered.sortedBy { it.name }
+            SortMode.NAME_DESC -> filtered.sortedByDescending { it.name }
             SortMode.STOCK_FIRST -> filtered.sortedWith(
                 compareBy({ ui.sortMode.statusRank(it.status) }, { it.name })
             )
@@ -575,7 +576,7 @@ fun StockManagerScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .tutorialTarget(TutorialTarget.SORT_BUTTON, tutorialTargets),
-                            label = ui.sortMode.label,
+                            currentMode = ui.sortMode,
                             menuOpen = sortMenuOpen,
                             onMenuOpenChange = { sortMenuOpen = it },
                             onSelect = {
