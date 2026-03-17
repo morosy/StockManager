@@ -615,7 +615,11 @@ fun StockManagerScreen(
                                 shape = RoundedCornerShape(20.dp)
                             )
                             TextButton(
-                                onClick = { searchOpen = false },
+                                onClick = {
+                                    searchFieldValue = TextFieldValue("")
+                                    viewModel.setQuery("")
+                                    searchOpen = false
+                                },
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Text("閉じる")
