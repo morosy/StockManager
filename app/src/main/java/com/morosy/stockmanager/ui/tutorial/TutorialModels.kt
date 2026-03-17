@@ -77,12 +77,24 @@ enum class TutorialStep(
         message = "このチュートリアルは、メニューの「使い方」よりいつでも見ることができます"
     );
 
-    fun next(): TutorialStep? {
-        return values().getOrNull(ordinal + 1)
-    }
-
-    fun previous(): TutorialStep? {
-        return values().getOrNull(ordinal - 1)
+    companion object {
+        fun flow(includeAddBoardStep: Boolean): List<TutorialStep> {
+            return buildList {
+                add(OPEN_BOARD_LIST)
+                add(OPEN_BOARD_EDIT)
+                if (includeAddBoardStep) {
+                    add(ADD_BOARD)
+                }
+                add(ADD_ITEM)
+                add(EDIT_ITEM)
+                add(BOARD_LIST_OVERVIEW)
+                add(BOARD_DISPLAY_SWITCH)
+                add(RENAME_BOARD)
+                add(FILTER_ITEMS)
+                add(SORT_ITEMS)
+                add(TUTORIAL_REMINDER)
+            }
+        }
     }
 }
 

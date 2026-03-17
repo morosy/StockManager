@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,6 +34,10 @@ import com.morosy.stockmanager.ui.tutorial.TutorialStep
 fun TutorialOverlay(
     step: TutorialStep,
     targetRect: Rect?,
+    progressIndex: Int,
+    progressTotal: Int,
+    canGoBack: Boolean,
+    isLastStep: Boolean,
     canAdvance: Boolean,
     supportingMessage: String? = null,
     onTargetTap: () -> Unit,
@@ -103,6 +108,17 @@ fun TutorialOverlay(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
+                    text = "$progressIndex / $progressTotal",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                LinearProgressIndicator(
+                    progress = { progressIndex / progressTotal.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
                     text = step.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -132,7 +148,7 @@ fun TutorialOverlay(
                 ) {
                     Button(
                         onClick = onBack,
-                        enabled = step.previous() != null,
+                        enabled = canGoBack,
                         colors = ButtonDefaults.buttonColors(),
                     ) {
                         Text("戻る")
@@ -142,14 +158,16 @@ fun TutorialOverlay(
                         enabled = canAdvance,
                         colors = ButtonDefaults.buttonColors(),
                     ) {
-                        Text(if (step.next() == null) "完了" else "次へ")
+                        Text(if (isLastStep) "完了" else "次へ")
                     }
                 }
-                TextButton(
-                    onClick = onSkip,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text("スキップ")
+                if (!isLastStep) {
+                    TextButton(
+                        onClick = onSkip,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("スキップ")
+                    }
                 }
             }
         }

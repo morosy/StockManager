@@ -149,6 +149,7 @@ fun StockManagerScreen(
     var tutorialVisible by rememberSaveable { mutableStateOf(false) }
     var tutorialStep by rememberSaveable { mutableStateOf(TutorialStep.OPEN_BOARD_LIST) }
     var tutorialAutoStarted by rememberSaveable { mutableStateOf(false) }
+    var tutorialIncludesAddBoardStep by rememberSaveable { mutableStateOf(true) }
     var searchFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -186,6 +187,7 @@ fun StockManagerScreen(
     }
 
     fun startTutorial() {
+        tutorialIncludesAddBoardStep = ui.boards.isEmpty()
         tutorialVisible = true
         tutorialStep = TutorialStep.OPEN_BOARD_LIST
         drawerOpen = false
@@ -204,6 +206,13 @@ fun StockManagerScreen(
         boardEditMode = false
         sortMenuOpen = false
     }
+
+    val tutorialFlow = remember(tutorialIncludesAddBoardStep) {
+        TutorialStep.flow(includeAddBoardStep = tutorialIncludesAddBoardStep)
+    }
+    val tutorialStepIndex = tutorialFlow.indexOf(tutorialStep)
+    val tutorialPreviousStep = tutorialFlow.getOrNull(tutorialStepIndex - 1)
+    val tutorialNextStep = tutorialFlow.getOrNull(tutorialStepIndex + 1)
 
     val openDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -443,7 +452,7 @@ fun StockManagerScreen(
             }
             TutorialStep.OPEN_BOARD_EDIT -> {
                 boardEditMode = true
-                tutorialStep = TutorialStep.ADD_BOARD
+                tutorialStep = tutorialNextStep ?: TutorialStep.OPEN_BOARD_EDIT
             }
             TutorialStep.ADD_BOARD -> {
                 boardAddModalOpen = true
@@ -482,7 +491,7 @@ fun StockManagerScreen(
             }
             TutorialStep.FILTER_ITEMS,
             TutorialStep.SORT_ITEMS -> {
-                val next = tutorialStep.next()
+                val next = tutorialNextStep
                 if (next == null) {
                     closeTutorial()
                 } else {
@@ -494,7 +503,7 @@ fun StockManagerScreen(
     }
 
     fun goBackTutorial() {
-        tutorialStep.previous()?.let { previous ->
+        tutorialPreviousStep?.let { previous ->
             tutorialStep = previous
         }
     }
@@ -868,6 +877,10 @@ fun StockManagerScreen(
             TutorialOverlay(
                 step = tutorialStep,
                 targetRect = tutorialTargetRect,
+                progressIndex = tutorialStepIndex + 1,
+                progressTotal = tutorialFlow.size,
+                canGoBack = tutorialPreviousStep != null,
+                isLastStep = tutorialNextStep == null,
                 canAdvance = tutorialCanAdvance,
                 supportingMessage = tutorialSupportingMessage,
                 onTargetTap = { onTutorialTargetTap() },
