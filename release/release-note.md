@@ -176,3 +176,21 @@ v1.1.6
 - Fixed sort order
 </en-US>
 ```
+
+```1.1.7
+<ja-JP>
+v1.1.7
+【新機能】
+- チュートリアル機能に進捗を追加
+【修正点】
+- 検索機能を修正
+</ja-JP>
+
+<en-US>
+v1.1.7
+[New Features]
+- Added progress tracking to tutorial feature
+[Fixes]
+- Fixed search functionality
+</en-US>
+```
