@@ -678,13 +678,25 @@ fun StockManagerScreen(
 
                 if (addItemModalOpen && !editMode) {
                     AddItemModal(
+                        errorMessage = { name ->
+                            when {
+                                name.isEmpty() -> null
+                                currentItems.any { it.name == name } -> "同じ名前のアイテムは追加できません"
+                                else -> null
+                            }
+                        },
                         onDismiss = { addItemModalOpen = false },
                         onSave = { name ->
                             val boardId = ui.currentBoardId
                             if (boardId != 0L) {
-                                viewModel.addItem(boardId, name)
+                                viewModel.addItem(boardId, name) { added ->
+                                    if (added) {
+                                        addItemModalOpen = false
+                                    }
+                                }
+                            } else {
+                                addItemModalOpen = false
                             }
-                            addItemModalOpen = false
                         }
                     )
                 }
@@ -936,6 +948,9 @@ private fun Modifier.tutorialTarget(
         registry[target] = coordinates.boundsInRoot()
     }
 }
+
+
+
 
 
 

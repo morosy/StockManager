@@ -8,6 +8,9 @@
 .externalNativeBuild/
 .cxx/
 /local.properties
+.gradle-user-home/
+**/.gradle/
+local.properties
 
 # local notes/assets
 .screenshot/
@@ -15,3 +18,4 @@
 # privacy.txt
 .keys/
 app/release/
+

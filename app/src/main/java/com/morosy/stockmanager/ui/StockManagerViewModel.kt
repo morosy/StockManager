@@ -130,13 +130,14 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addItem(boardId: Long, name: String) {
+    fun addItem(boardId: Long, name: String, onResult: (Boolean) -> Unit = {}) {
         val trimmed = name.trim().take(MAX_ITEM_NAME_LENGTH)
         if (trimmed.isEmpty()) {
+            onResult(false)
             return
         }
         viewModelScope.launch {
-            repo.addItem(boardId, trimmed)
+            onResult(repo.addItem(boardId, trimmed))
         }
     }
 
@@ -211,3 +212,5 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 }
+
+

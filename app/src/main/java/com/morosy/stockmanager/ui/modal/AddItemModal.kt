@@ -23,19 +23,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.morosy.stockmanager.MAX_ITEM_NAME_LENGTH
@@ -47,28 +47,34 @@ fun AddItemModal(
     initialText: String = "",
     confirmLabel: String = "保存",
     placeholder: String = "名前を入力",
+    errorMessage: (String) -> String? = { null },
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
     var text by remember { mutableStateOf(initialText) }
-    var showError by remember { mutableStateOf(false) }
+    var showEmptyError by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val trimmedText = text.trim()
+    val validationMessage = errorMessage(trimmedText)
+    val hasError = showEmptyError || validationMessage != null
 
     fun attemptSave() {
-        val name = text.trim()
-        if (name.isEmpty()) {
-            showError = true
+        if (trimmedText.isEmpty()) {
+            showEmptyError = true
             return
         }
-        onSave(name)
+        if (validationMessage != null) {
+            return
+        }
+        onSave(trimmedText)
         text = ""
-        showError = false
+        showEmptyError = false
     }
 
     LaunchedEffect(initialText) {
         text = initialText
-        showError = false
+        showEmptyError = false
     }
 
     LaunchedEffect(Unit) {
@@ -116,8 +122,8 @@ fun AddItemModal(
                     value = text,
                     onValueChange = {
                         text = it.take(MAX_ITEM_NAME_LENGTH)
-                        if (showError) {
-                            showError = text.trim().isEmpty()
+                        if (showEmptyError) {
+                            showEmptyError = text.trim().isEmpty()
                         }
                     },
                     modifier = Modifier
@@ -126,13 +132,13 @@ fun AddItemModal(
                     label = { Text("名前") },
                     placeholder = { Text(placeholder) },
                     singleLine = true,
-                    isError = showError,
+                    isError = hasError,
                     trailingIcon = {
                         if (text.isNotEmpty()) {
                             IconButton(
                                 onClick = {
                                     text = ""
-                                    showError = true
+                                    showEmptyError = true
                                 }
                             ) {
                                 Icon(Icons.Filled.Clear, contentDescription = "クリア")
@@ -140,10 +146,10 @@ fun AddItemModal(
                         }
                     },
                     supportingText = {
-                        if (showError) {
-                            Text("入力してください")
-                        } else {
-                            Text("${text.length}/$MAX_ITEM_NAME_LENGTH")
+                        when {
+                            showEmptyError -> Text("入力してください")
+                            validationMessage != null -> Text(validationMessage)
+                            else -> Text("${text.length}/$MAX_ITEM_NAME_LENGTH")
                         }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -155,7 +161,7 @@ fun AddItemModal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    enabled = text.trim().isNotEmpty(),
+                    enabled = trimmedText.isNotEmpty() && validationMessage == null,
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF6750A4),

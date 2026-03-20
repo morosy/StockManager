@@ -1,4 +1,4 @@
-package com.morosy.stockmanager.data.db
+﻿package com.morosy.stockmanager.data.db
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -27,6 +27,9 @@ interface StockDao {
     // --- Items ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: StockItemEntity): Long
+
+    @Query("SELECT COUNT(*) FROM stock_items WHERE board_id = :boardId AND name = :name")
+    suspend fun countItemsByBoardIdAndName(boardId: Long, name: String): Int
 
     @Update
     suspend fun updateItem(item: StockItemEntity): Int

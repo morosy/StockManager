@@ -80,9 +80,12 @@ class StockRepository(private val db: AppDatabase) {
         stockDao.deleteBoardById(boardId)
     }
 
-    suspend fun addItem(boardId: Long, name: String) {
+    suspend fun addItem(boardId: Long, name: String): Boolean {
         val normalized = name.trim().take(MAX_ITEM_NAME_LENGTH)
         require(normalized.isNotEmpty()) { "item name is empty" }
+        if (stockDao.countItemsByBoardIdAndName(boardId, normalized) > 0) {
+            return false
+        }
         val now = System.currentTimeMillis()
         stockDao.insertItem(
             StockItemEntity(
@@ -93,6 +96,7 @@ class StockRepository(private val db: AppDatabase) {
                 updatedAt = now
             )
         )
+        return true
     }
 
     suspend fun toggleItem(item: StockItemEntity) {
@@ -189,7 +193,8 @@ class StockRepository(private val db: AppDatabase) {
         const val INITIAL_BOARD_NAME = "ボード1"
         val INITIAL_BOARD_NAME_MOJIBAKE_CANDIDATES = setOf(
             "繝懊・繝・1",
-            "ãƒœãƒ¼ãƒ‰1"
+            "a??a??a?‰1"
         )
     }
 }
+
