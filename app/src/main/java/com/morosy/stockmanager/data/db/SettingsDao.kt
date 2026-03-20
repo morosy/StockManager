@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data.db
+package com.morosy.stockmanager.data.db
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -15,6 +15,7 @@ interface SettingsDao {
     suspend fun getOnce(): SettingsEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entity: SettingsEntity)
+    suspend fun upsert(entity: SettingsEntity): Long
 }
+
 

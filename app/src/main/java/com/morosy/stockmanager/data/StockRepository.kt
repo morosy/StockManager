@@ -33,10 +33,15 @@ class StockRepository(private val db: AppDatabase) {
     }
 
     suspend fun updateBoardOrders(orderedIds: List<Long>) {
-        boardDao.updateBoardOrders(orderedIds)
+        db.withTransaction {
+            orderedIds.forEachIndexed { index, id ->
+                boardDao.updateSortOrder(id, index)
+            }
+        }
     }
 
     suspend fun ensureSeeded(): Boolean {
+        repairInitialBoardNameIfNeeded()
         if (stockDao.countBoards() > 0 || settingsDao.getOnce() != null) {
             return false
         }
@@ -44,7 +49,7 @@ class StockRepository(private val db: AppDatabase) {
         val now = System.currentTimeMillis()
         val boardId = stockDao.insertBoard(
             BoardEntity(
-                name = "ボード1".take(MAX_BOARD_NAME_LENGTH),
+                name = INITIAL_BOARD_NAME,
                 createdAt = now,
                 sortOrder = 0
             )
@@ -169,5 +174,22 @@ class StockRepository(private val db: AppDatabase) {
                 newBoardId
             }
         }
+    }
+
+    private suspend fun repairInitialBoardNameIfNeeded() {
+        val boards = stockDao.observeBoards().first()
+        boards.forEach { board ->
+            if (board.name in INITIAL_BOARD_NAME_MOJIBAKE_CANDIDATES) {
+                boardDao.renameBoard(board.id, INITIAL_BOARD_NAME)
+            }
+        }
+    }
+
+    private companion object {
+        const val INITIAL_BOARD_NAME = "ボード1"
+        val INITIAL_BOARD_NAME_MOJIBAKE_CANDIDATES = setOf(
+            "繝懊・繝・1",
+            "ãƒœãƒ¼ãƒ‰1"
+        )
     }
 }

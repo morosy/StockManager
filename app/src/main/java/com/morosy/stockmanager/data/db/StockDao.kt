@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data.db
+package com.morosy.stockmanager.data.db
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -22,21 +22,22 @@ interface StockDao {
     suspend fun insertBoard(board: BoardEntity): Long
 
     @Query("DELETE FROM boards WHERE id = :boardId")
-    suspend fun deleteBoardById(boardId: Long)
+    suspend fun deleteBoardById(boardId: Long): Int
 
     // --- Items ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: StockItemEntity): Long
 
     @Update
-    suspend fun updateItem(item: StockItemEntity)
+    suspend fun updateItem(item: StockItemEntity): Int
 
     @Query("UPDATE stock_items SET name = :newName, updated_at = :updatedAt WHERE id = :itemId")
-    suspend fun renameItem(itemId: Long, newName: String, updatedAt: Long)
+    suspend fun renameItem(itemId: Long, newName: String, updatedAt: Long): Int
 
     @Query("DELETE FROM stock_items WHERE id = :itemId")
-    suspend fun deleteItemById(itemId: Long)
+    suspend fun deleteItemById(itemId: Long): Int
 
     @Query("SELECT COUNT(*) FROM boards")
     suspend fun countBoards(): Int
 }
+
