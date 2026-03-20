@@ -19,3 +19,5 @@ local.properties
 .keys/
 app/release/
 
+.vscode/
+
