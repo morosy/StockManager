@@ -34,6 +34,7 @@ import com.morosy.stockmanager.R
 enum class AppInfoScreenType {
     HOW_TO_USE,
     ABOUT,
+    TERMS,
     OSS_LICENSES,
     PRIVACY_POLICY
 }
@@ -48,6 +49,7 @@ fun AppInfoScreenOverlay(
     val title = when (type) {
         AppInfoScreenType.HOW_TO_USE -> "使い方"
         AppInfoScreenType.ABOUT -> "About"
+        AppInfoScreenType.TERMS -> "利用規約"
         AppInfoScreenType.OSS_LICENSES -> "OSSライセンス"
         AppInfoScreenType.PRIVACY_POLICY -> "プライバシーポリシー"
     }
@@ -55,6 +57,7 @@ fun AppInfoScreenOverlay(
     val bodyText = when (type) {
         AppInfoScreenType.HOW_TO_USE -> null
         AppInfoScreenType.ABOUT -> null
+        AppInfoScreenType.TERMS -> textLoader(R.raw.terms)
         AppInfoScreenType.OSS_LICENSES -> textLoader(R.raw.oss_licenses)
         AppInfoScreenType.PRIVACY_POLICY -> textLoader(R.raw.privacy_policy)
     }
@@ -166,4 +169,5 @@ fun AppInfoScreenOverlay(
         }
     }
 }
+
 

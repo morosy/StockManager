@@ -94,6 +94,7 @@ fun BoardDrawerOverlay(
     onCreateBoardFromTool: () -> Unit,
     onOpenHowToUse: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenTerms: () -> Unit,
     onOpenOssLicenses: () -> Unit,
     onOpenContact: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
@@ -237,6 +238,13 @@ fun BoardDrawerOverlay(
                                     onClick = {
                                         menuOpen.value = false
                                         onOpenAbout()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("利用規約") },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onOpenTerms()
                                     }
                                 )
                                 DropdownMenuItem(
@@ -516,3 +524,4 @@ fun BoardDrawerOverlay(
         }
     }
 }
+

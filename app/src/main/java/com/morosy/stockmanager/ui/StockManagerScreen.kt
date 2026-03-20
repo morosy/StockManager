@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.morosy.stockmanager.R
 import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
 import com.morosy.stockmanager.data.db.StockItemStatus
@@ -320,6 +321,7 @@ fun StockManagerScreen(
             context.resources.openRawResource(resId).bufferedReader(Charsets.UTF_8).use { it.readText() }
         }.getOrDefault("")
     }
+
 
     LaunchedEffect(pendingDeleteItemId) {
         val id = pendingDeleteItemId ?: return@LaunchedEffect
@@ -838,6 +840,7 @@ fun StockManagerScreen(
             },
             onOpenHowToUse = { startTutorial() },
             onOpenAbout = { appInfoScreenType = AppInfoScreenType.ABOUT },
+            onOpenTerms = { appInfoScreenType = AppInfoScreenType.TERMS },
             onOpenOssLicenses = { appInfoScreenType = AppInfoScreenType.OSS_LICENSES },
             onOpenContact = {
                 Toast.makeText(context, "外部サイトへアクセスします", Toast.LENGTH_SHORT).show()
@@ -933,3 +936,7 @@ private fun Modifier.tutorialTarget(
         registry[target] = coordinates.boundsInRoot()
     }
 }
+
+
+
+

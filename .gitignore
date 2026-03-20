@@ -12,6 +12,6 @@
 # local notes/assets
 .screenshot/
 # ForGenerateAI.md
-privacy.txt
+# privacy.txt
 .keys/
 app/release/
