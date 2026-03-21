@@ -202,7 +202,6 @@ v1.1.8
 【新機能】
 - アイテム名の重複を防ぐ機能を実装
 - 利用規約を追加
-【修正点】
 </ja-JP>
 
 <en-US>
@@ -210,6 +209,5 @@ v1.1.8
 [New Features]
 - Implemented feature to prevent duplicate item names
 - Added terms of use
-[Fixes]
 </en-US>
 ```
