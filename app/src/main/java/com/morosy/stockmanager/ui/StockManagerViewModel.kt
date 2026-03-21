@@ -141,12 +141,20 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun toggleItem(item: StockItemEntity) {
+        fun toggleItem(item: StockItemEntity) {
         viewModelScope.launch {
             repo.toggleItem(item)
         }
     }
 
+    fun saveShoppingListChanges(items: List<StockItemEntity>) {
+        if (items.isEmpty()) {
+            return
+        }
+        viewModelScope.launch {
+            repo.updateItemStatuses(items)
+        }
+    }
     fun deleteItem(itemId: Long) {
         viewModelScope.launch {
             repo.deleteItem(itemId)
@@ -212,5 +220,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 }
+
+
 
 

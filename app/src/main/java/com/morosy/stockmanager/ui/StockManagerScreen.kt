@@ -966,6 +966,9 @@ fun StockManagerScreen(
                     shoppingListOverlayStep = ShoppingListOverlayStep.Result
                 }
             },
+            onSaveChanges = { items ->
+                viewModel.saveShoppingListChanges(items)
+            },
             onDismiss = { closeShoppingListOverlay() }
         )
 
@@ -1025,6 +1028,7 @@ private fun Modifier.tutorialTarget(
         registry[target] = coordinates.boundsInRoot()
     }
 }
+
 
 
 
