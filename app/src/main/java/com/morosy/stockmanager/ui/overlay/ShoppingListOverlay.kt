@@ -1,6 +1,9 @@
 ﻿package com.morosy.stockmanager.ui.overlay
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +32,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -63,18 +69,33 @@ fun ShoppingListOverlay(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = step == ShoppingListOverlayStep.BoardSelection,
+            dismissOnClickOutside = false,
             usePlatformDefaultWidth = false
         )
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize()
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .let { base ->
+                        if (step == ShoppingListOverlayStep.BoardSelection) {
+                            base.clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onDismiss() }
+                        } else {
+                            base
+                        }
+                    }
+            )
+
             Surface(
                 modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp)
                     .fillMaxWidth()
                     .widthIn(max = 560.dp)
                     .fillMaxHeight(0.82f),
@@ -159,8 +180,10 @@ private fun ColumnScope.BoardSelectionContent(
 
     Text(
         text = "複数選択できます",
+        modifier = Modifier.fillMaxWidth(),
         style = MaterialTheme.typography.bodyMedium,
-        color = colorScheme.onSurfaceVariant
+        color = colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
     )
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -209,6 +232,7 @@ private fun ColumnScope.BoardSelectionContent(
                             .padding(horizontal = 16.dp, vertical = 15.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Spacer(modifier = Modifier.size(20.dp))
                         Text(
                             text = board.name,
                             modifier = Modifier.weight(1f),
@@ -217,15 +241,21 @@ private fun ColumnScope.BoardSelectionContent(
                             } else {
                                 colorScheme.onSurface
                             },
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            textAlign = TextAlign.Center
                         )
-                        if (selected) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = "選択中",
-                                tint = colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
+                        Box(
+                            modifier = Modifier.size(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (selected) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "選択中",
+                                    tint = colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -279,8 +309,10 @@ private fun ColumnScope.ShoppingListResultContent(
                 ) {
                     Text(
                         text = section.boardName,
+                        modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -330,6 +362,9 @@ private fun ColumnScope.ShoppingListResultContent(
         Text("閉じる")
     }
 }
+
+
+
 
 
 
