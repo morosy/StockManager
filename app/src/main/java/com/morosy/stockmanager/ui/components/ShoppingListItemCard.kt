@@ -30,7 +30,8 @@ import com.morosy.stockmanager.ui.theme.WarningOutlineLight
 @Composable
 fun ShoppingListItemCard(
     item: StockItemEntity,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val yellowBg = if (colorScheme.background.luminance() < 0.5f) WarningContainerDark else WarningContainerLight
@@ -49,29 +50,51 @@ fun ShoppingListItemCard(
         else -> Triple(outBg, outText, null)
     }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = bg,
-        border = border
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
+    val surfaceModifier = modifier
+        .fillMaxWidth()
+        .height(56.dp)
+
+    if (onClick == null) {
+        Surface(
+            modifier = surfaceModifier,
+            shape = RoundedCornerShape(16.dp),
+            color = bg,
+            border = border
         ) {
-            Text(
-                text = item.name,
-                color = textColor,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                lineHeight = 15.sp,
-                maxLines = 2,
-                textAlign = TextAlign.Center
-            )
+            ShoppingListItemCardContent(item = item, textColor = textColor)
         }
+    } else {
+        Surface(
+            onClick = onClick,
+            modifier = surfaceModifier,
+            shape = RoundedCornerShape(16.dp),
+            color = bg,
+            border = border
+        ) {
+            ShoppingListItemCardContent(item = item, textColor = textColor)
+        }
+    }
+}
+
+@Composable
+private fun ShoppingListItemCardContent(
+    item: StockItemEntity,
+    textColor: androidx.compose.ui.graphics.Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = item.name,
+            color = textColor,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
+            maxLines = 2,
+            textAlign = TextAlign.Center
+        )
     }
 }

@@ -104,6 +104,22 @@ class StockRepository(private val db: AppDatabase) {
         stockDao.updateItem(item.copy(status = nextStatus, updatedAt = System.currentTimeMillis()))
     }
 
+    suspend fun updateItemStatuses(items: List<StockItemEntity>) {
+        if (items.isEmpty()) {
+            return
+        }
+        db.withTransaction {
+            val now = System.currentTimeMillis()
+            items.forEach { item ->
+                stockDao.updateItem(
+                    item.copy(
+                        status = StockItemStatus.normalize(item.status),
+                        updatedAt = now
+                    )
+                )
+            }
+        }
+    }
     suspend fun deleteItem(itemId: Long) {
         stockDao.deleteItemById(itemId)
     }
@@ -197,4 +213,6 @@ class StockRepository(private val db: AppDatabase) {
         )
     }
 }
+
+
 

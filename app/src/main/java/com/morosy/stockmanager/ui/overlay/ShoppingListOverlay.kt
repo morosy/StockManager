@@ -1,6 +1,9 @@
 ﻿package com.morosy.stockmanager.ui.overlay
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -28,14 +32,24 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.morosy.stockmanager.data.db.BoardEntity
+import com.morosy.stockmanager.data.db.StockItemEntity
+import com.morosy.stockmanager.data.db.StockItemStatus
 import com.morosy.stockmanager.ui.components.ShoppingListItemCard
 import com.morosy.stockmanager.ui.shopping.ShoppingListBoardSection
 
@@ -53,28 +67,77 @@ fun ShoppingListOverlay(
     sections: List<ShoppingListBoardSection>,
     onToggleBoard: (Long) -> Unit,
     onShowResults: () -> Unit,
+    onSaveChanges: (List<StockItemEntity>) -> Unit,
     onDismiss: () -> Unit
 ) {
     if (!open) {
         return
     }
 
+    var draftSections by remember(step, sections) {
+        mutableStateOf(
+            sections.map { section ->
+                section.copy(items = section.items.map { it.copy() })
+            }
+        )
+    }
+    val initialStatuses = remember(step, sections) {
+        sections.flatMap { section ->
+            section.items.map { item -> item.id to item.status }
+        }.toMap()
+    }
+    val pendingChanges = remember(draftSections, initialStatuses) {
+        draftSections.flatMap { section -> section.items }.mapNotNull { item ->
+            val initialStatus = initialStatuses[item.id] ?: return@mapNotNull null
+            if (initialStatus != item.status) {
+                item
+            } else {
+                null
+            }
+        }
+    }
+    val hasPendingChanges = pendingChanges.isNotEmpty()
+    var showDiscardDialog by rememberSaveable(open, step) { mutableStateOf(false) }
+
+    fun requestClose() {
+        if (step == ShoppingListOverlayStep.Result && hasPendingChanges) {
+            showDiscardDialog = true
+        } else {
+            onDismiss()
+        }
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { requestClose() },
         properties = DialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = step == ShoppingListOverlayStep.BoardSelection,
+            dismissOnClickOutside = false,
             usePlatformDefaultWidth = false
         )
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize()
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .let { base ->
+                        if (step == ShoppingListOverlayStep.BoardSelection) {
+                            base.clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onDismiss() }
+                        } else {
+                            base
+                        }
+                    }
+            )
+
             Surface(
                 modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp)
                     .fillMaxWidth()
                     .widthIn(max = 560.dp)
                     .fillMaxHeight(0.82f),
@@ -93,7 +156,7 @@ fun ShoppingListOverlay(
                         } else {
                             "欠品リスト"
                         },
-                        onDismiss = onDismiss
+                        onDismiss = { requestClose() }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -110,14 +173,56 @@ fun ShoppingListOverlay(
 
                         ShoppingListOverlayStep.Result -> {
                             ShoppingListResultContent(
-                                sections = sections,
-                                onDismiss = onDismiss
+                                sections = draftSections,
+                                hasPendingChanges = hasPendingChanges,
+                                onToggleItem = { itemId ->
+                                    draftSections = draftSections.map { section ->
+                                        section.copy(
+                                            items = section.items.map { item ->
+                                                if (item.id == itemId) {
+                                                    item.copy(status = StockItemStatus.next(item.status))
+                                                } else {
+                                                    item
+                                                }
+                                            }
+                                        )
+                                    }
+                                },
+                                onClose = {
+                                    if (hasPendingChanges) {
+                                        onSaveChanges(pendingChanges)
+                                    }
+                                    onDismiss()
+                                }
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("変更を破棄しますか？") },
+            text = { Text("保存していない変更は反映されません。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDiscardDialog = false
+                        onDismiss()
+                    }
+                ) {
+                    Text("閉じる")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("キャンセル")
+                }
+            }
+        )
     }
 }
 
@@ -159,8 +264,10 @@ private fun ColumnScope.BoardSelectionContent(
 
     Text(
         text = "複数選択できます",
+        modifier = Modifier.fillMaxWidth(),
         style = MaterialTheme.typography.bodyMedium,
-        color = colorScheme.onSurfaceVariant
+        color = colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
     )
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -209,6 +316,7 @@ private fun ColumnScope.BoardSelectionContent(
                             .padding(horizontal = 16.dp, vertical = 15.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Spacer(modifier = Modifier.size(20.dp))
                         Text(
                             text = board.name,
                             modifier = Modifier.weight(1f),
@@ -217,15 +325,21 @@ private fun ColumnScope.BoardSelectionContent(
                             } else {
                                 colorScheme.onSurface
                             },
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            textAlign = TextAlign.Center
                         )
-                        if (selected) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = "選択中",
-                                tint = colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
+                        Box(
+                            modifier = Modifier.size(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (selected) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "選択中",
+                                    tint = colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -250,7 +364,9 @@ private fun ColumnScope.BoardSelectionContent(
 @Composable
 private fun ColumnScope.ShoppingListResultContent(
     sections: List<ShoppingListBoardSection>,
-    onDismiss: () -> Unit
+    hasPendingChanges: Boolean,
+    onToggleItem: (Long) -> Unit,
+    onClose: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -279,8 +395,10 @@ private fun ColumnScope.ShoppingListResultContent(
                 ) {
                     Text(
                         text = section.boardName,
+                        modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -292,13 +410,15 @@ private fun ColumnScope.ShoppingListResultContent(
                         ) {
                             ShoppingListItemCard(
                                 item = rowItems[0],
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                onClick = { onToggleItem(rowItems[0].id) }
                             )
 
                             if (rowItems.size > 1) {
                                 ShoppingListItemCard(
                                     item = rowItems[1],
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onToggleItem(rowItems[1].id) }
                                 )
                             } else {
                                 Spacer(modifier = Modifier.weight(1f))
@@ -321,17 +441,12 @@ private fun ColumnScope.ShoppingListResultContent(
     Spacer(modifier = Modifier.height(8.dp))
 
     Button(
-        onClick = onDismiss,
+        onClick = onClose,
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),
         shape = RoundedCornerShape(18.dp)
     ) {
-        Text("閉じる")
+        Text(if (hasPendingChanges) "保存して閉じる" else "閉じる")
     }
 }
-
-
-
-
-

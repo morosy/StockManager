@@ -1,4 +1,4 @@
-# ForGenerateAI.md
+﻿# ForGenerateAI.md
 
 ## StockManager コンテキストガイド
 最終更新: 2026-03-22
@@ -233,15 +233,15 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - チュートリアルについて
 
 重要:
-- `AppInfoScreenType.HOW_TO_USE`の静的画面は実質使っていない
-- チュートリアルオーバーレイは`StockManagerScreen.kt`と`TutorialOverlay.kt`で制御している
-- ターゲット座標は同一Compose root上で扱う
-- ハイライトは円形で、最後の`チュートリアルについて`ステップにはハイライトがない
+- `AppInfoScreenType.HOW_TO_USE` の静的画面は実質使っていない
+- チュートリアルオーバーレイは `StockManagerScreen.kt` と `TutorialOverlay.kt` で制御している
+- ターゲット座標は同一 Compose root 上で扱う
+- ハイライトは円形で、最後の `チュートリアルについて` ステップにはハイライトがない
 - 説明文は中央揃え
-- `次へ`で実際のボタンを押さなくても必要な画面遷移が進む
-- 既存ボードがある状態で開始した場合は、`ボードを追加`ステップを飛ばした 11 枚構成になる
-- `アイテムを追加`、`ボード名を編集`では実際の入力オーバーレイを開かず、説明のみで進行する
-- `使い方の場所`ステップは現在存在しない
+- `次へ` で実際のボタンを押さなくても必要な画面遷移が進む
+- 既存ボードがある状態で開始した場合は、`ボードを追加` ステップを飛ばした 11 枚構成になる
+- `アイテムを追加`、`ボード名を編集` では実際の入力オーバーレイを開かず、説明のみで進行する
+- `使い方の場所` ステップは現在存在しない
 - `欠品リストを表示` ステップは中央の Extended FAB を対象にする
 
 関連ファイル:
@@ -275,7 +275,7 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
   - 左: 編集
   - 中央: `欠品リストを表示`
   - 右: 追加
-- 3つの FAB は紫背景で統一する
+- 3 つの FAB は紫背景で統一する
 - 中央 FAB は `ExtendedFloatingActionButton`
 - 中央 FAB は左右 FAB との間隔が `16dp` になる幅で配置する
 - FAB 用の背景帯は作らず、ボード上に浮いて見える前提にする
@@ -283,12 +283,19 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - 選択対象はボード単位で複数選択可能
 - 選択済みボードだけから `HIGHLIGHTED` と `OUT_OF_STOCK` を抽出する
 - 一覧はボードごとのセクションで表示する
-- 結果カードは read only で、タップしても状態変更しない
+- 結果一覧の並び順は `黄色 -> 赤色` を最優先にし、その中で現在のソートモードを適用する
 - ボード選択ステップは外タップで閉じられる
 - 結果表示ステップは外タップで閉じない
+- 結果一覧ではカードをタップしてローカルなドラフト状態としてステータス変更できる
+- ステータス変更で白になったアイテムも、保存前は欠品リストから消さない
+- 変更がある場合、下部ボタンは `保存して閉じる` に変わる
+- 変更がある状態で `X` または戻る操作を行うと、`閉じる` / `キャンセル` の警告ダイアログを表示する
+- `保存して閉じる` を押したときだけ DB に反映する
 
 関連ファイル:
 - `app/src/main/java/com/morosy/stockmanager/ui/StockManagerScreen.kt`
+- `app/src/main/java/com/morosy/stockmanager/ui/StockManagerViewModel.kt`
+- `app/src/main/java/com/morosy/stockmanager/data/StockRepository.kt`
 - `app/src/main/java/com/morosy/stockmanager/ui/overlay/ShoppingListOverlay.kt`
 - `app/src/main/java/com/morosy/stockmanager/ui/shopping/ShoppingListModels.kt`
 - `app/src/main/java/com/morosy/stockmanager/ui/components/ShoppingListItemCard.kt`
@@ -304,7 +311,7 @@ OSS ライセンス画面は、静的テキストをアプリ内オーバーレ�
 - 表示対象は主にアプリ本体で利用するランタイム依存
 - テスト専用依存やビルドプラグインは原則として表示対象から除外する
 - 現在の主要ランタイム依存は Apache License 2.0 で統一されている
-- 依存バージョン更新時は、`gradle/libs.versions.toml` と `app/build.gradle.kts` を確認して `oss_licenses.txt` も同期する
+- 依存バージョン更新時は `gradle/libs.versions.toml` と `app/build.gradle.kts` を確認して `oss_licenses.txt` も同期する
 
 関連ファイル:
 - `app/src/main/java/com/morosy/stockmanager/ui/overlay/AppInfoScreenOverlay.kt`
@@ -503,6 +510,8 @@ app/src/main/java/com/morosy/stockmanager/
 - ホーム画面下部の 3 つの FAB は紫背景で統一し、中央の欠品リスト FAB は横長にする
 - アイテムカードは 12 文字 x 2 行でも違和感が出にくいよう、やや小さめの文字サイズと少し強めの角丸を使う
 - 検索バーはフィルター列から 16dp 程度の間隔を空け、角丸を付け、右側に `閉じる` 操作用のボタンを置く
+- 欠品リストの選択補助文、ボード名、結果見出しは中央揃えで表示する
+- 欠品リスト結果カードは通常カードと同系統の配色を使い、ドラフト編集中も即座に見た目へ反映する
 - アイテムの裏返しアニメーションは視認性を優先し、完了後に状態更新が反映されるようにする
 - ボード並び替え中は、長押ししたタイル全体が外側の影付きで強く持ち上がり、指を置いた位置を保ったまま追従することを優先する
 - 並び替え判定は隣接タイルの中央ラインを越えた時点で行い、越された側のタイルはスプリングで弾かれるように移動する
@@ -531,6 +540,7 @@ app/src/main/java/com/morosy/stockmanager/
 - CSV は 3 状態を完全保持できない前提を守る
 - `showStock` / `showOut` のフィルター意味を変えない
 - 欠品リスト表示は黄色・赤のみを対象とする
+- 欠品リストのドラフト編集は `保存して閉じる` まで DB に反映しない
 - ボード順は `sort_order` で保持される
 - `currentBoardId` は `settings` に保存される
 - migration 変更時は既存ユーザーデータ保持を優先する
