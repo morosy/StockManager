@@ -61,7 +61,7 @@ class ShoppingListModelsTest {
     }
 
     @Test
-    fun buildShoppingListSections_usesDisplaySortModeInsideEachBoard() {
+    fun buildShoppingListSections_keepsYellowBeforeRedWhileSortingInsideEachGroup() {
         val sections = buildShoppingListSections(
             boards = listOf(
                 BoardWithItems(
@@ -78,7 +78,31 @@ class ShoppingListModelsTest {
         )
 
         assertEquals(
-            listOf("あずき", "みかん", "りんご"),
+            listOf("みかん", "あずき", "りんご"),
+            sections.first().items.map { it.name }
+        )
+    }
+
+    @Test
+    fun buildShoppingListSections_ordersYellowBeforeRed() {
+        val sections = buildShoppingListSections(
+            boards = listOf(
+                BoardWithItems(
+                    board = BoardEntity(id = 7L, name = "日用品"),
+                    items = listOf(
+                        item(id = 1L, boardId = 7L, name = "赤A", status = StockItemStatus.OUT_OF_STOCK),
+                        item(id = 2L, boardId = 7L, name = "黄B", status = StockItemStatus.HIGHLIGHTED),
+                        item(id = 3L, boardId = 7L, name = "赤C", status = StockItemStatus.OUT_OF_STOCK),
+                        item(id = 4L, boardId = 7L, name = "黄D", status = StockItemStatus.HIGHLIGHTED)
+                    )
+                )
+            ),
+            selectedBoardIds = setOf(7L),
+            sortMode = SortMode.NEWEST
+        )
+
+        assertEquals(
+            listOf("黄D", "黄B", "赤C", "赤A"),
             sections.first().items.map { it.name }
         )
     }

@@ -25,6 +25,39 @@ fun sortItemsForDisplay(items: List<StockItemEntity>, sortMode: SortMode): List<
     }
 }
 
+private fun shoppingListStatusRank(status: Int): Int {
+    return when (StockItemStatus.normalize(status)) {
+        StockItemStatus.HIGHLIGHTED -> 0
+        StockItemStatus.OUT_OF_STOCK -> 1
+        else -> 2
+    }
+}
+
+fun sortShoppingListItems(items: List<StockItemEntity>, sortMode: SortMode): List<StockItemEntity> {
+    val comparator = when (sortMode) {
+        SortMode.OLDEST -> compareBy<StockItemEntity> { it.createdAt }
+            .thenBy { it.name }
+
+        SortMode.NEWEST -> compareByDescending<StockItemEntity> { it.createdAt }
+            .thenBy { it.name }
+
+        SortMode.NAME -> compareBy<StockItemEntity> { it.name }
+            .thenBy { it.createdAt }
+
+        SortMode.NAME_DESC -> compareByDescending<StockItemEntity> { it.name }
+            .thenBy { it.createdAt }
+
+        SortMode.STOCK_FIRST,
+        SortMode.OUT_FIRST -> compareBy<StockItemEntity> { it.name }
+            .thenBy { it.createdAt }
+    }
+
+    return items.sortedWith(
+        compareBy<StockItemEntity> { shoppingListStatusRank(it.status) }
+            .then(comparator)
+    )
+}
+
 fun buildShoppingListSections(
     boards: List<BoardWithItems>,
     selectedBoardIds: Set<Long>,
@@ -55,7 +88,7 @@ fun buildShoppingListSections(
         ShoppingListBoardSection(
             boardId = boardWithItems.board.id,
             boardName = boardWithItems.board.name,
-            items = sortItemsForDisplay(pickedItems, sortMode)
+            items = sortShoppingListItems(pickedItems, sortMode)
         )
     }
 }
