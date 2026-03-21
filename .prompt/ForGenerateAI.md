@@ -1,7 +1,7 @@
 # ForGenerateAI.md
 
 ## StockManager コンテキストガイド
-最終更新: 2026-03-19
+最終更新: 2026-03-22
 
 このファイルは、StockManager リポジトリを AI が安全かつ一貫して扱うための要約です。実装変更・レビュー・不具合修正・リリースノート更新の前に、ここに書かれた前提と重要ファイルを確認してください。
 
@@ -17,6 +17,7 @@ StockManager は、家庭内在庫をホワイトボード上のマグネット�
 - 複数ボード管理
 - アイテムの追加・削除・状態切り替え
 - ボード順の並び替え
+- 複数ボード横断の欠品リスト表示
 - JSON / CSV のインポート・エクスポート
 - アプリ内ヘルプ、About、OSS ライセンス、プライバシーポリシー表示
 
@@ -24,8 +25,8 @@ StockManager は、家庭内在庫をホワイトボード上のマグネット�
 
 ## 2. 現在のバージョン
 
-- アプリ versionName: `1.1.7`
-- アプリ versionCode: `9`
+- アプリ versionName: `1.1.8`
+- アプリ versionCode: `10`
 - Room DB version: `7`
 - パッケージ名: `com.morosy.stockmanager`
 
@@ -263,6 +264,35 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 
 ---
 
+## 9.2 欠品リスト表示仕様
+
+`欠品リストを表示` は、複数ボードを横断して黄色・赤色アイテムだけを集約表示する機能です。
+
+重要:
+- 画面下部には 3 つの FAB が並ぶ
+  - 左: 編集
+  - 中央: `欠品リストを表示`
+  - 右: 追加
+- 3つの FAB は紫背景で統一する
+- 中央 FAB は `ExtendedFloatingActionButton`
+- 中央 FAB は左右 FAB との間隔が `16dp` になる幅で配置する
+- FAB 用の背景帯は作らず、ボード上に浮いて見える前提にする
+- 選択画面では全ボードが初期選択される
+- 選択対象はボード単位で複数選択可能
+- 選択済みボードだけから `HIGHLIGHTED` と `OUT_OF_STOCK` を抽出する
+- 一覧はボードごとのセクションで表示する
+- 結果カードは read only で、タップしても状態変更しない
+- ボード選択ステップは外タップで閉じられる
+- 結果表示ステップは外タップで閉じない
+
+関連ファイル:
+- `app/src/main/java/com/morosy/stockmanager/ui/StockManagerScreen.kt`
+- `app/src/main/java/com/morosy/stockmanager/ui/overlay/ShoppingListOverlay.kt`
+- `app/src/main/java/com/morosy/stockmanager/ui/shopping/ShoppingListModels.kt`
+- `app/src/main/java/com/morosy/stockmanager/ui/components/ShoppingListItemCard.kt`
+
+---
+
 ## 10. アーキテクチャ概要
 
 基本構成:
@@ -376,6 +406,7 @@ app/src/main/java/com/morosy/stockmanager/
 |  |- components/
 |  |  |- FilterSegmentedRow.kt
 |  |  |- MagnetCard.kt
+|  |  |- ShoppingListItemCard.kt
 |  |  |- SortSplitButton.kt
 |  |- modal/
 |  |  |- AddItemModal.kt
@@ -385,7 +416,10 @@ app/src/main/java/com/morosy/stockmanager/
 |     |- BoardDrawerOverlay.kt
 |     |- ConfirmBoardDeleteDialog.kt
 |     |- RenameBoardOverlay.kt
+|     |- ShoppingListOverlay.kt
 |     |- TutorialOverlay.kt
+|  |- shopping/
+|     |- ShoppingListModels.kt
 |  |- tutorial/
 |     |- TutorialModels.kt
 |- app/src/test/java/com/morosy/stockmanager/
@@ -395,6 +429,9 @@ app/src/main/java/com/morosy/stockmanager/
 |  |     |- StockItemStatusTest.kt
 |  |- model/
 |     |- SortModeTest.kt
+|  |- ui/
+|  |  |- shopping/
+|  |  |  |- ShoppingListModelsTest.kt
 ```
 
 ---
@@ -442,6 +479,7 @@ app/src/main/java/com/morosy/stockmanager/
 - 基準色は `#6750A4` と `#E7E0EC`
 - 主要 UI は `MaterialTheme.colorScheme` を基準にし、ライト/ダーク両モードで破綻しないようにする
 - ボード一覧では、アクティブなボードを濃い紫系背景で強調し、非アクティブでも背景境界が見える薄い面を持たせる
+- ホーム画面下部の 3 つの FAB は紫背景で統一し、中央の欠品リスト FAB は横長にする
 - アイテムカードは 12 文字 x 2 行でも違和感が出にくいよう、やや小さめの文字サイズと少し強めの角丸を使う
 - 検索バーはフィルター列から 16dp 程度の間隔を空け、角丸を付け、右側に `閉じる` 操作用のボタンを置く
 - アイテムの裏返しアニメーションは視認性を優先し、完了後に状態更新が反映されるようにする
@@ -471,6 +509,7 @@ app/src/main/java/com/morosy/stockmanager/
 - `status` と `inStock` の互換性を壊さない
 - CSV は 3 状態を完全保持できない前提を守る
 - `showStock` / `showOut` のフィルター意味を変えない
+- 欠品リスト表示は黄色・赤のみを対象とする
 - ボード順は `sort_order` で保持される
 - `currentBoardId` は `settings` に保存される
 - migration 変更時は既存ユーザーデータ保持を優先する

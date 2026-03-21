@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -27,11 +30,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,10 +69,13 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.morosy.stockmanager.R
 import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
+import com.morosy.stockmanager.data.db.BoardEntity
 import com.morosy.stockmanager.data.db.StockItemStatus
 import com.morosy.stockmanager.model.SortMode
 import com.morosy.stockmanager.model.statusRank
@@ -81,7 +90,11 @@ import com.morosy.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.morosy.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
 import com.morosy.stockmanager.ui.overlay.RenameBoardOverlay
 import com.morosy.stockmanager.ui.overlay.TutorialOverlay
+import com.morosy.stockmanager.ui.overlay.ShoppingListOverlay
+import com.morosy.stockmanager.ui.overlay.ShoppingListOverlayStep
 import com.morosy.stockmanager.ui.tutorial.TutorialStep
+import com.morosy.stockmanager.ui.shopping.buildShoppingListSections
+import com.morosy.stockmanager.ui.shopping.sortItemsForDisplay
 import com.morosy.stockmanager.ui.tutorial.TutorialTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -141,9 +154,12 @@ fun StockManagerScreen(
     var drawerOpen by remember { mutableStateOf(false) }
     var boardEditMode by remember { mutableStateOf(false) }
     var boardAddModalOpen by remember { mutableStateOf(false) }
+    var shoppingListOverlayOpen by remember { mutableStateOf(false) }
+    var shoppingListOverlayStep by remember { mutableStateOf(ShoppingListOverlayStep.BoardSelection) }
     var appInfoScreenType by remember { mutableStateOf<AppInfoScreenType?>(null) }
     var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
+    val selectedShoppingBoardIds = remember { mutableStateListOf<Long>() }
 
     var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
     val tutorialTargets = remember { mutableStateMapOf<TutorialTarget, Rect>() }
@@ -271,18 +287,16 @@ fun StockManagerScreen(
             passStock && passQuery
         }
 
-        when (ui.sortMode) {
-            SortMode.OLDEST -> filtered.sortedBy { it.createdAt }
-            SortMode.NEWEST -> filtered.sortedByDescending { it.createdAt }
-            SortMode.NAME -> filtered.sortedBy { it.name }
-            SortMode.NAME_DESC -> filtered.sortedByDescending { it.name }
-            SortMode.STOCK_FIRST -> filtered.sortedWith(
-                compareBy({ ui.sortMode.statusRank(it.status) }, { it.name })
-            )
-            SortMode.OUT_FIRST -> filtered.sortedWith(
-                compareBy({ ui.sortMode.statusRank(it.status) }, { it.name })
-            )
-        }
+        sortItemsForDisplay(filtered, ui.sortMode)
+
+    }
+    val selectedShoppingBoardIdsSnapshot = selectedShoppingBoardIds.toList()
+    val shoppingListSections = remember(ui.boards, ui.sortMode, selectedShoppingBoardIdsSnapshot) {
+        buildShoppingListSections(
+            boards = ui.boards,
+            selectedBoardIds = selectedShoppingBoardIdsSnapshot.toSet(),
+            sortMode = ui.sortMode
+        )
     }
 
     fun requestDeleteItem(itemId: Long) {
@@ -322,6 +336,26 @@ fun StockManagerScreen(
         }.getOrDefault("")
     }
 
+    fun openShoppingListOverlay() {
+        selectedShoppingBoardIds.clear()
+        selectedShoppingBoardIds.addAll(ui.boards.map { it.board.id })
+        shoppingListOverlayStep = ShoppingListOverlayStep.BoardSelection
+        shoppingListOverlayOpen = true
+        addItemModalOpen = false
+    }
+
+    fun closeShoppingListOverlay() {
+        shoppingListOverlayOpen = false
+        shoppingListOverlayStep = ShoppingListOverlayStep.BoardSelection
+    }
+
+    fun toggleShoppingListBoard(boardId: Long) {
+        if (selectedShoppingBoardIds.contains(boardId)) {
+            selectedShoppingBoardIds.remove(boardId)
+        } else {
+            selectedShoppingBoardIds.add(boardId)
+        }
+    }
 
     LaunchedEffect(pendingDeleteItemId) {
         val id = pendingDeleteItemId ?: return@LaunchedEffect
@@ -344,6 +378,9 @@ fun StockManagerScreen(
         if (!hasBoard) {
             editMode = false
             addItemModalOpen = false
+            shoppingListOverlayOpen = false
+            shoppingListOverlayStep = ShoppingListOverlayStep.BoardSelection
+            selectedShoppingBoardIds.clear()
         }
     }
 
@@ -735,6 +772,26 @@ fun StockManagerScreen(
                 }
 
                 if (hasBoard) {
+                    ExtendedFloatingActionButton(
+                        onClick = { openShoppingListOverlay() },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(start = 96.dp, end = 96.dp, bottom = 24.dp)
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
+                    ) {
+                        Text(
+                            text = "欠品リストを表示",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                if (hasBoard) {
                     FloatingActionButton(
                         onClick = {
                             editMode = !editMode
@@ -749,8 +806,8 @@ fun StockManagerScreen(
                             .size(56.dp)
                             .tutorialTarget(TutorialTarget.ITEM_EDIT_FAB, tutorialTargets),
                         shape = CircleShape,
-                        containerColor = if (editMode) colorScheme.errorContainer else colorScheme.surface,
-                        contentColor = if (editMode) colorScheme.onErrorContainer else colorScheme.primary
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = "編集")
                     }
@@ -766,8 +823,8 @@ fun StockManagerScreen(
                             .size(56.dp)
                             .tutorialTarget(TutorialTarget.ITEM_ADD_FAB, tutorialTargets),
                         shape = CircleShape,
-                        containerColor = colorScheme.surface,
-                        contentColor = colorScheme.primary
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = "追加")
                     }
@@ -892,6 +949,21 @@ fun StockManagerScreen(
             }
         )
 
+        ShoppingListOverlay(
+            open = shoppingListOverlayOpen,
+            step = shoppingListOverlayStep,
+            boards = ui.boards.map { it.board },
+            selectedBoardIds = selectedShoppingBoardIdsSnapshot.toSet(),
+            sections = shoppingListSections,
+            onToggleBoard = { boardId -> toggleShoppingListBoard(boardId) },
+            onShowResults = {
+                if (selectedShoppingBoardIds.isNotEmpty()) {
+                    shoppingListOverlayStep = ShoppingListOverlayStep.Result
+                }
+            },
+            onDismiss = { closeShoppingListOverlay() }
+        )
+
         if (!hideTutorialOverlay) {
             TutorialOverlay(
                 step = tutorialStep,
@@ -948,6 +1020,17 @@ private fun Modifier.tutorialTarget(
         registry[target] = coordinates.boundsInRoot()
     }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
