@@ -13,7 +13,8 @@ enum class TutorialTarget {
     CURRENT_BOARD_ITEM,
     BOARD_TITLE,
     FILTER_ROW,
-    SORT_BUTTON
+    SORT_BUTTON,
+    SHOPPING_LIST_FAB
 }
 
 enum class TutorialStep(
@@ -71,6 +72,11 @@ enum class TutorialStep(
         title = "並び替え",
         message = "ソートボタンから、アイテムの並び順を切り替えられます。"
     ),
+    SHOW_SHOPPING_LIST(
+        target = TutorialTarget.SHOPPING_LIST_FAB,
+        title = "欠品リストを表示する",
+        message = "このボタンから、複数ボードを横断した欠品リストを表示できます。"
+    ),
     TUTORIAL_REMINDER(
         target = TutorialTarget.NONE,
         title = "チュートリアルについて",
@@ -92,6 +98,7 @@ enum class TutorialStep(
                 add(RENAME_BOARD)
                 add(FILTER_ITEMS)
                 add(SORT_ITEMS)
+                add(SHOW_SHOPPING_LIST)
                 add(TUTORIAL_REMINDER)
             }
         }
