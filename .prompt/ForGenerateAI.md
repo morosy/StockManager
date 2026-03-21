@@ -213,7 +213,7 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - `スキップ`で即終了できる
 - オーバーレイ上部に現在位置と進捗バーを表示する
 - 初期状態では `ボード1` があるため、そのまま進行できる
-- チュートリアル開始時に、`ボードを追加`ステップを含む 11 枚構成か、除外した 10 枚構成かを決定する
+- チュートリアル開始時に、`ボードを追加`ステップを含む 12 枚構成か、除外した 11 枚構成かを決定する
 - ただし、ボードが0件の状態でチュートリアルを起動した場合は、`ボードを追加`ステップで実際にボードを作成するまで先へ進めない
 - 最終ステップでは「このチュートリアルは、メニューの『使い方』よりいつでも見ることができます」と案内する
 - 最終ステップでは `スキップ` を表示しない
@@ -229,6 +229,7 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - ボード名を編集
 - 絞り込み
 - 並び替え
+- 欠品リストを表示
 - チュートリアルについて
 
 重要:
@@ -238,9 +239,10 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - ハイライトは円形で、最後の`チュートリアルについて`ステップにはハイライトがない
 - 説明文は中央揃え
 - `次へ`で実際のボタンを押さなくても必要な画面遷移が進む
-- 既存ボードがある状態で開始した場合は、`ボードを追加`ステップを飛ばした 10 枚構成になる
+- 既存ボードがある状態で開始した場合は、`ボードを追加`ステップを飛ばした 11 枚構成になる
 - `アイテムを追加`、`ボード名を編集`では実際の入力オーバーレイを開かず、説明のみで進行する
 - `使い方の場所`ステップは現在存在しない
+- `欠品リストを表示` ステップは中央の Extended FAB を対象にする
 
 関連ファイル:
 - `app/src/main/java/com/morosy/stockmanager/ui/StockManagerScreen.kt`
@@ -290,6 +292,25 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 - `app/src/main/java/com/morosy/stockmanager/ui/overlay/ShoppingListOverlay.kt`
 - `app/src/main/java/com/morosy/stockmanager/ui/shopping/ShoppingListModels.kt`
 - `app/src/main/java/com/morosy/stockmanager/ui/components/ShoppingListItemCard.kt`
+
+---
+
+## 9.3 OSS ライセンス表示仕様
+
+OSS ライセンス画面は、静的テキストをアプリ内オーバーレイで表示する方式です。
+
+重要:
+- 表示内容は `app/src/main/res/raw/oss_licenses.txt` をそのまま読み込む
+- 表示対象は主にアプリ本体で利用するランタイム依存
+- テスト専用依存やビルドプラグインは原則として表示対象から除外する
+- 現在の主要ランタイム依存は Apache License 2.0 で統一されている
+- 依存バージョン更新時は、`gradle/libs.versions.toml` と `app/build.gradle.kts` を確認して `oss_licenses.txt` も同期する
+
+関連ファイル:
+- `app/src/main/java/com/morosy/stockmanager/ui/overlay/AppInfoScreenOverlay.kt`
+- `app/src/main/res/raw/oss_licenses.txt`
+- `app/build.gradle.kts`
+- `gradle/libs.versions.toml`
 
 ---
 

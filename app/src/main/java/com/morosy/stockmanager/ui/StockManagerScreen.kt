@@ -404,6 +404,7 @@ fun StockManagerScreen(
             tutorialTargets.remove(TutorialTarget.BOARD_TITLE)
             tutorialTargets.remove(TutorialTarget.FILTER_ROW)
             tutorialTargets.remove(TutorialTarget.SORT_BUTTON)
+            tutorialTargets.remove(TutorialTarget.SHOPPING_LIST_FAB)
         }
         if (!boardEditMode) {
             tutorialTargets.remove(TutorialTarget.BOARD_ADD)
@@ -433,6 +434,7 @@ fun StockManagerScreen(
             TutorialStep.ADD_ITEM,
             TutorialStep.FILTER_ITEMS,
             TutorialStep.SORT_ITEMS,
+            TutorialStep.SHOW_SHOPPING_LIST,
             TutorialStep.TUTORIAL_REMINDER -> {
                 drawerOpen = false
                 boardEditMode = false
@@ -508,6 +510,7 @@ fun StockManagerScreen(
             TutorialStep.RENAME_BOARD -> tutorialStep = TutorialStep.FILTER_ITEMS
             TutorialStep.FILTER_ITEMS,
             TutorialStep.SORT_ITEMS,
+            TutorialStep.SHOW_SHOPPING_LIST,
             TutorialStep.TUTORIAL_REMINDER -> Unit
         }
     }
@@ -529,7 +532,8 @@ fun StockManagerScreen(
                 }
             }
             TutorialStep.FILTER_ITEMS,
-            TutorialStep.SORT_ITEMS -> {
+            TutorialStep.SORT_ITEMS,
+            TutorialStep.SHOW_SHOPPING_LIST -> {
                 val next = tutorialNextStep
                 if (next == null) {
                     closeTutorial()
@@ -779,7 +783,8 @@ fun StockManagerScreen(
                             .navigationBarsPadding()
                             .padding(start = 96.dp, end = 96.dp, bottom = 24.dp)
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(56.dp)
+                            .tutorialTarget(TutorialTarget.SHOPPING_LIST_FAB, tutorialTargets),
                         shape = RoundedCornerShape(20.dp),
                         containerColor = colorScheme.primary,
                         contentColor = colorScheme.onPrimary
@@ -1020,6 +1025,8 @@ private fun Modifier.tutorialTarget(
         registry[target] = coordinates.boundsInRoot()
     }
 }
+
+
 
 
 
