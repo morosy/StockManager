@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data
+package com.morosy.stockmanager.data
 
 import androidx.room.withTransaction
 import com.morosy.stockmanager.MAX_BOARD_NAME_LENGTH
@@ -41,7 +41,6 @@ class StockRepository(private val db: AppDatabase) {
     }
 
     suspend fun ensureSeeded(): Boolean {
-        repairInitialBoardNameIfNeeded()
         if (stockDao.countBoards() > 0 || settingsDao.getOnce() != null) {
             return false
         }
@@ -120,6 +119,7 @@ class StockRepository(private val db: AppDatabase) {
             }
         }
     }
+
     suspend fun deleteItem(itemId: Long) {
         stockDao.deleteItemById(itemId)
     }
@@ -196,23 +196,9 @@ class StockRepository(private val db: AppDatabase) {
         }
     }
 
-    private suspend fun repairInitialBoardNameIfNeeded() {
-        val boards = stockDao.observeBoards().first()
-        boards.forEach { board ->
-            if (board.name in INITIAL_BOARD_NAME_MOJIBAKE_CANDIDATES) {
-                boardDao.renameBoard(board.id, INITIAL_BOARD_NAME)
-            }
-        }
-    }
 
     private companion object {
         const val INITIAL_BOARD_NAME = "ボード1"
-        val INITIAL_BOARD_NAME_MOJIBAKE_CANDIDATES = setOf(
-            "繝懊・繝・1",
-            "a??a??a?‰1"
-        )
     }
 }
-
-
 
