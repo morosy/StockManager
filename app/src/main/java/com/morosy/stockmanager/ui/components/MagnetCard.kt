@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.components
+package com.morosy.stockmanager.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeOut
@@ -62,6 +62,7 @@ fun MagnetCard(
     stockBorder: Color,
     outBg: Color,
     outText: Color,
+    modifier: Modifier = Modifier,
     editMode: Boolean,
     isDeleting: Boolean,
     onToggle: () -> Unit,
@@ -109,7 +110,7 @@ fun MagnetCard(
         exit = fadeOut(animationSpec = tween(180)) + shrinkOut(animationSpec = tween(180))
     ) {
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .graphicsLayer {

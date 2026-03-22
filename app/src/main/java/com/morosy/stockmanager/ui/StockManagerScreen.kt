@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui
+package com.morosy.stockmanager.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -48,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -59,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -395,16 +397,23 @@ fun StockManagerScreen(
         if (!drawerOpen) {
             tutorialTargets.remove(TutorialTarget.BOARD_EDIT)
             tutorialTargets.remove(TutorialTarget.BOARD_ADD)
+            tutorialTargets.remove(TutorialTarget.BOARD_LIST)
+            tutorialTargets.remove(TutorialTarget.CURRENT_BOARD_ITEM)
         }
         if (!hasBoard) {
             tutorialTargets.remove(TutorialTarget.ITEM_ADD_FAB)
             tutorialTargets.remove(TutorialTarget.ITEM_EDIT_FAB)
             tutorialTargets.remove(TutorialTarget.BOARD_LIST)
             tutorialTargets.remove(TutorialTarget.CURRENT_BOARD_ITEM)
+            tutorialTargets.remove(TutorialTarget.CURRENT_ITEM)
             tutorialTargets.remove(TutorialTarget.BOARD_TITLE)
             tutorialTargets.remove(TutorialTarget.FILTER_ROW)
             tutorialTargets.remove(TutorialTarget.SORT_BUTTON)
             tutorialTargets.remove(TutorialTarget.SHOPPING_LIST_FAB)
+        }
+        if (boardEditMode) {
+            tutorialTargets.remove(TutorialTarget.BOARD_EDIT)
+            tutorialTargets.remove(TutorialTarget.CURRENT_BOARD_ITEM)
         }
         if (!boardEditMode) {
             tutorialTargets.remove(TutorialTarget.BOARD_ADD)
@@ -423,6 +432,11 @@ fun StockManagerScreen(
             }
             TutorialStep.OPEN_BOARD_EDIT -> {
                 drawerOpen = true
+                boardEditMode = false
+                editMode = false
+            }
+            TutorialStep.EXPLAIN_ITEM -> {
+                drawerOpen = false
                 boardEditMode = false
                 editMode = false
             }
@@ -467,6 +481,24 @@ fun StockManagerScreen(
         }
     }
 
+    // EXPLAIN_ITEM ステップで、ボード編集モード完全閉鎖後にハイライト位置を再計算
+    LaunchedEffect(tutorialVisible, tutorialStep, boardEditMode) {
+        if (!tutorialVisible || tutorialStep != TutorialStep.EXPLAIN_ITEM || boardEditMode) {
+            return@LaunchedEffect
+        }
+        // ボード編集モードが閉じられた後、アニメーション完了まで待機
+        delay(300)
+    }
+
+    // OPEN_BOARD_EDIT ステップで、ボード編集ボタン位置を確定させるための待機
+    LaunchedEffect(tutorialVisible, tutorialStep, boardEditMode, drawerOpen) {
+        if (!tutorialVisible || tutorialStep != TutorialStep.OPEN_BOARD_EDIT || !boardEditMode || !drawerOpen) {
+            return@LaunchedEffect
+        }
+        // ボード編集モード開時のレイアウト確定を待機
+        delay(100)
+    }
+
     val tutorialTargetRect = tutorialTargets[tutorialStep.target]
     val hideTutorialOverlay =
         !tutorialVisible ||
@@ -495,6 +527,10 @@ fun StockManagerScreen(
                 boardEditMode = true
                 tutorialStep = tutorialNextStep ?: TutorialStep.OPEN_BOARD_EDIT
             }
+            TutorialStep.EXPLAIN_ITEM -> {
+                // アイテム説明ステップはターゲットをタップするだけで次へ進む
+                tutorialStep = tutorialNextStep ?: TutorialStep.EXPLAIN_ITEM
+            }
             TutorialStep.ADD_BOARD -> {
                 boardAddModalOpen = true
             }
@@ -519,6 +555,7 @@ fun StockManagerScreen(
         when (tutorialStep) {
             TutorialStep.OPEN_BOARD_LIST,
             TutorialStep.OPEN_BOARD_EDIT,
+            TutorialStep.EXPLAIN_ITEM,
             TutorialStep.ADD_ITEM,
             TutorialStep.EDIT_ITEM,
             TutorialStep.BOARD_LIST_OVERVIEW,
@@ -703,6 +740,11 @@ fun StockManagerScreen(
                                 stockBorder = stockBorder,
                                 outBg = outBg,
                                 outText = outText,
+                                modifier = if (item.id == filteredSortedItems.firstOrNull()?.id) {
+                                    Modifier.tutorialTarget(TutorialTarget.CURRENT_ITEM, tutorialTargets)
+                                } else {
+                                    Modifier
+                                },
                                 editMode = editMode,
                                 isDeleting = deletingIds.contains(item.id),
                                 onToggle = {
@@ -1024,8 +1066,15 @@ private fun Modifier.tutorialTarget(
     target: TutorialTarget,
     registry: MutableMap<TutorialTarget, Rect>
 ): Modifier {
-    return this.onGloballyPositioned { coordinates ->
-        registry[target] = coordinates.boundsInRoot()
+    return composed {
+        DisposableEffect(target, registry) {
+            onDispose {
+                registry.remove(target)
+            }
+        }
+        this.onGloballyPositioned { coordinates ->
+            registry[target] = coordinates.boundsInRoot()
+        }
     }
 }
 

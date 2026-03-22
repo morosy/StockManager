@@ -11,6 +11,7 @@ enum class TutorialTarget {
     ITEM_EDIT_FAB,
     BOARD_LIST,
     CURRENT_BOARD_ITEM,
+    CURRENT_ITEM,
     BOARD_TITLE,
     FILTER_ROW,
     SORT_BUTTON,
@@ -31,6 +32,11 @@ enum class TutorialStep(
         target = TutorialTarget.BOARD_EDIT,
         title = "ボード編集を開く",
         message = "ボードの追加や並び替えはここから行います。"
+    ),
+    EXPLAIN_ITEM(
+        target = TutorialTarget.CURRENT_ITEM,
+        title = "アイテムについて",
+        message = "これがアイテムです。在庫状態は色で表示されます：白=在庫あり、黄=要確認、赤=欠品。"
     ),
     ADD_BOARD(
         target = TutorialTarget.BOARD_ADD,
@@ -88,6 +94,7 @@ enum class TutorialStep(
             return buildList {
                 add(OPEN_BOARD_LIST)
                 add(OPEN_BOARD_EDIT)
+                add(EXPLAIN_ITEM)
                 if (includeAddBoardStep) {
                     add(ADD_BOARD)
                 }
