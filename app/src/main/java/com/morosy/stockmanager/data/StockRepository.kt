@@ -1,4 +1,4 @@
-package com.morosy.stockmanager.data
+﻿package com.morosy.stockmanager.data
 
 import androidx.room.withTransaction
 import com.morosy.stockmanager.MAX_BOARD_NAME_LENGTH
@@ -46,13 +46,26 @@ class StockRepository(private val db: AppDatabase) {
         }
 
         val now = System.currentTimeMillis()
-        val boardId = stockDao.insertBoard(
-            BoardEntity(
-                name = INITIAL_BOARD_NAME,
-                createdAt = now,
-                sortOrder = 0
+        val boardId = db.withTransaction {
+            val id = stockDao.insertBoard(
+                BoardEntity(
+                    name = INITIAL_BOARD_NAME,
+                    createdAt = now,
+                    sortOrder = 0
+                )
             )
-        )
+            // 初期ボードにアイテムを追加
+            stockDao.insertItem(
+                StockItemEntity(
+                    boardId = id,
+                    name = INITIAL_ITEM_NAME,
+                    status = StockItemStatus.IN_STOCK,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+            id
+        }
         settingsDao.upsert(
             SettingsEntity(
                 id = 0L,
@@ -199,6 +212,7 @@ class StockRepository(private val db: AppDatabase) {
 
     private companion object {
         const val INITIAL_BOARD_NAME = "ボード1"
+        const val INITIAL_ITEM_NAME = "アイテム1"
     }
 }
 
