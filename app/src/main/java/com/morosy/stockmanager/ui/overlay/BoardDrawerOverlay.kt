@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.overlay
+package com.morosy.stockmanager.ui.overlay
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -212,7 +212,7 @@ fun BoardDrawerOverlay(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("ツールからボードを作成") },
+                                    text = { Text("外部ツールからボードを作成") },
                                     onClick = {
                                         menuOpen.value = false
                                         onCreateBoardFromTool()

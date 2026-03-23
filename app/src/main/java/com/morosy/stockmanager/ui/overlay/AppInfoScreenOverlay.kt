@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.overlay
+package com.morosy.stockmanager.ui.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -128,7 +128,7 @@ fun AppInfoScreenOverlay(
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(text = "・左上メニューからボードを追加・編集")
                             Text(text = "・三点リーダーからエクスポート/インポート")
-                            Text(text = "・「ツールからボードを作成」で外部テンプレートツールへ移動")
+                            Text(text = "・「外部ツールからボードを作成」で外部テンプレートツールへ移動")
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
