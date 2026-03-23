@@ -1,5 +1,6 @@
 package com.morosy.stockmanager.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -91,6 +92,8 @@ import com.morosy.stockmanager.ui.overlay.BoardAddModal
 import com.morosy.stockmanager.ui.overlay.BoardDrawerOverlay
 import com.morosy.stockmanager.ui.overlay.ConfirmBoardDeleteDialog
 import com.morosy.stockmanager.ui.overlay.RenameBoardOverlay
+import com.morosy.stockmanager.ui.overlay.ResetAppDataDialog
+import com.morosy.stockmanager.ui.overlay.ResetAppDataDialogStage
 import com.morosy.stockmanager.ui.overlay.TutorialOverlay
 import com.morosy.stockmanager.ui.overlay.ShoppingListOverlay
 import com.morosy.stockmanager.ui.overlay.ShoppingListOverlayStep
@@ -159,6 +162,8 @@ fun StockManagerScreen(
     var shoppingListOverlayOpen by remember { mutableStateOf(false) }
     var shoppingListOverlayStep by remember { mutableStateOf(ShoppingListOverlayStep.BoardSelection) }
     var appInfoScreenType by remember { mutableStateOf<AppInfoScreenType?>(null) }
+    var resetAppDataDialogStage by remember { mutableStateOf<ResetAppDataDialogStage?>(null) }
+    var resettingAppData by remember { mutableStateOf(false) }
     var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
     val selectedShoppingBoardIds = remember { mutableStateListOf<Long>() }
@@ -974,9 +979,45 @@ fun StockManagerScreen(
                 }
             },
             onOpenPrivacyPolicy = { appInfoScreenType = AppInfoScreenType.PRIVACY_POLICY },
+            onRequestResetData = {
+                drawerOpen = false
+                boardEditMode = false
+                resetAppDataDialogStage = ResetAppDataDialogStage.FirstWarning
+            },
             onReorderBoards = { ids -> viewModel.reorderBoards(ids) }
         )
 
+
+        resetAppDataDialogStage?.let { stage ->
+            ResetAppDataDialog(
+                stage = stage,
+                inProgress = resettingAppData,
+                onDismiss = {
+                    if (!resettingAppData) {
+                        resetAppDataDialogStage = null
+                    }
+                },
+                onContinue = {
+                    resetAppDataDialogStage = ResetAppDataDialogStage.FinalConfirmation
+                },
+                onConfirm = {
+                    resettingAppData = true
+                    viewModel.resetAllData { result ->
+                        resettingAppData = false
+                        result.onSuccess {
+                            resetAppDataDialogStage = null
+                            (context as? Activity)?.finishAffinity()
+                        }.onFailure { e ->
+                            Toast.makeText(
+                                context,
+                                "データ削除に失敗しました: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            )
+        }
         appInfoScreenType?.let { screenType ->
             AppInfoScreenOverlay(
                 type = screenType,

@@ -217,6 +217,7 @@ v1.1.8
 v1.1.9
 【新機能】
 - ボードをまたいだ欠品リスト出力機能を試験的に実装
+- データの削除機能を実装
 
 【修正点】
 - 外部ツールへの遷移ボタンのテキストを変更
@@ -227,6 +228,7 @@ v1.1.9
 v1.1.9
 [New Features]
 - Trial implementation of out-of-stock list output function across boards
+- Implemented data deletion feature
 
 [Fixes]
 - Changed text of button for transitioning to external tools

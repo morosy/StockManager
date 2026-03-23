@@ -98,6 +98,7 @@ fun BoardDrawerOverlay(
     onOpenOssLicenses: () -> Unit,
     onOpenContact: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
+    onRequestResetData: () -> Unit,
     onReorderBoards: (List<Long>) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -259,6 +260,19 @@ fun BoardDrawerOverlay(
                                     onClick = {
                                         menuOpen.value = false
                                         onOpenPrivacyPolicy()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "データを削除",
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    },
+                                    onClick = {
+                                        menuOpen.value = false
+                                        onRequestResetData()
                                     }
                                 )
                             }

@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data
+package com.morosy.stockmanager.data
 
 import androidx.room.withTransaction
 import com.morosy.stockmanager.MAX_BOARD_NAME_LENGTH
@@ -86,6 +86,10 @@ class StockRepository(private val db: AppDatabase) {
 
     suspend fun markTutorialSeen() {
         updateSettings { it.copy(tutorialSeen = true) }
+    }
+
+    suspend fun resetAllData() = withContext(Dispatchers.IO) {
+        db.clearAllTables()
     }
 
     suspend fun deleteBoard(boardId: Long) {

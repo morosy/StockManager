@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui
+package com.morosy.stockmanager.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -217,6 +217,15 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
     fun markTutorialSeen() {
         viewModelScope.launch {
             repo.markTutorialSeen()
+        }
+    }
+
+    fun resetAllData(onResult: (Result<Unit>) -> Unit = {}) {
+        viewModelScope.launch {
+            val result = runCatching {
+                repo.resetAllData()
+            }
+            onResult(result)
         }
     }
 }
