@@ -211,3 +211,25 @@ v1.1.8
 - Added terms of use
 </en-US>
 ```
+
+```1.1.9
+<ja-JP>
+v1.1.9
+【新機能】
+- ボードをまたいだ欠品リスト出力機能を試験的に実装
+
+【修正点】
+- 外部ツールへの遷移ボタンのテキストを変更
+- 初期状態のボード1へアイテム1を追加
+</ja-JP>
+
+<en-US>
+v1.1.9
+[New Features]
+- Trial implementation of out-of-stock list output function across boards
+
+[Fixes]
+- Changed text of button for transitioning to external tools
+- Added Item 1 to Board 1 in initial state
+</en-US>
+```
