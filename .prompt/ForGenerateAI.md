@@ -20,6 +20,7 @@ StockManager は、家庭内在庫をホワイトボード上のマグネット�
 - ボード順の並び替え
 - 複数ボード横断の欠品リスト表示
 - JSON / CSV のインポート・エクスポート
+- メニューからの全データ削除と初期化
 - アプリ内ヘルプ、About、OSS ライセンス、プライバシーポリシー表示
 
 ---
@@ -187,12 +188,13 @@ CSV は旧互換を維持しつつ、現行では `status` 列も扱います。
 
 ## 8. 初期状態
 
-新規インストール直後は、初期シードとして `ボード1` という名前の空ボードを1つだけ作成します。
+新規インストール直後は、初期シードとして `ボード1` と `アイテム1` を作成します。
 
 重要:
 - 初回起動時にだけ `ensureSeeded()` が走る
-- 既存ユーザーが全ボードを削除した状態では、自動で `ボード1` を再生成しない
-- 初期状態でアイテムは0件
+- `settings` と `boards` が空の状態で起動した場合は、初期データを再生成する
+- メニューの `データを削除` 実行後は DB を全消去し、次回起動時にこの初期シードへ戻る
+- 初期状態では `tutorialSeen = false` なので、次回起動時はチュートリアルが自動開始される
 
 関連ファイル:
 - `app/src/main/java/com/morosy/stockmanager/data/StockRepository.kt`
@@ -317,6 +319,7 @@ OSS ライセンス画面は、静的テキストをアプリ内オーバーレ�
 - テスト専用依存やビルドプラグインは原則として表示対象から除外する
 - 現在の主要ランタイム依存は Apache License 2.0 で統一されている
 - 依存バージョン更新時は `gradle/libs.versions.toml` と `app/build.gradle.kts` を確認して `oss_licenses.txt` も同期する
+- UI 変更のみで依存追加がない場合、通常は `oss_licenses.txt` の更新は不要
 
 関連ファイル:
 - `app/src/main/java/com/morosy/stockmanager/ui/overlay/AppInfoScreenOverlay.kt`
@@ -449,6 +452,7 @@ app/src/main/java/com/morosy/stockmanager/
 |     |- BoardDrawerOverlay.kt
 |     |- ConfirmBoardDeleteDialog.kt
 |     |- RenameBoardOverlay.kt
+|     |- ResetAppDataDialog.kt
 |     |- ShoppingListOverlay.kt
 |     |- TutorialOverlay.kt
 |  |- shopping/
@@ -548,6 +552,7 @@ app/src/main/java/com/morosy/stockmanager/
 - 欠品リストのドラフト編集は `保存して閉じる` まで DB に反映しない
 - ボード順は `sort_order` で保持される
 - `currentBoardId` は `settings` に保存される
+- `データを削除` は `clearAllTables()` による全消去で、次回起動時に初期シードとチュートリアル開始へ戻る
 - migration 変更時は既存ユーザーデータ保持を優先する
 - 文言変更時は UI の現在仕様 `在庫 / 欠品` を基準にする
 
