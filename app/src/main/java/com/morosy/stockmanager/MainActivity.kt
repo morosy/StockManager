@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager
+package com.morosy.stockmanager
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

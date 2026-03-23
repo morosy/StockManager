@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.components
+package com.morosy.stockmanager.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues

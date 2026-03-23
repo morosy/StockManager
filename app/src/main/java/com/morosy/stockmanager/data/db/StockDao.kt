@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data.db
+package com.morosy.stockmanager.data.db
 
 import androidx.room.Dao
 import androidx.room.Insert

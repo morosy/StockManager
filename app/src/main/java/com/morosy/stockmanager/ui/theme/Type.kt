@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.theme
+package com.morosy.stockmanager.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

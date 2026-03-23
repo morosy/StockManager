@@ -1,4 +1,4 @@
-[versions]
+ï»¿[versions]
 agp = "9.1.0"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
@@ -9,18 +9,17 @@ lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.10.1"
 composeBom = "2025.02.00"
 
-# ---- è¿½åŠ EEVVM/Room/KSPEE---
-# Kotlin 2.0.21 ã¨æ•´åˆã™ã‚EKSP
+# KSP and Kotlin standard libraries
 ksp = "2.3.2"
 
-# RoomEˆå®‰å®šç‰ˆEE
+# Room database library
 room = "2.8.4"
 
-# CoroutinesEEndroidEE
+# Coroutines for Android
 coroutines = "1.8.1"
 splashscreen = "1.0.1"
 
-# lifecycle-runtime-composeEEompose + Lifecycleé€£æºEE
+# Lifecycle runtime for Compose
 lifecycle = "2.8.6"
 lifecycleRuntimeCompose = "2.8.6"
 
@@ -46,8 +45,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout" }
 
-
-# ---- è¿½åŠ EEVVM/Room/KSPEE---
+# Room, ViewModel and Lifecycle libraries
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 
@@ -63,6 +61,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
-# ---- è¿½åŠ EESPEE---
+# Code generation plugin
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-

@@ -178,7 +178,7 @@ class StockRepository(private val db: AppDatabase) {
         val now = System.currentTimeMillis()
         val trimmedBoardName = decoded.boardName.trim().take(MAX_BOARD_NAME_LENGTH)
         if (trimmedBoardName.isEmpty()) {
-            return@withContext Result.failure(IllegalArgumentException("board.name が空です"))
+            return@withContext Result.failure(IllegalArgumentException("Board name cannot be empty"))
         }
 
         runCatching {
@@ -192,6 +192,7 @@ class StockRepository(private val db: AppDatabase) {
                     )
                 )
 
+                // Import items with a safety limit to prevent database overload
                 decoded.items.take(500).forEach { item ->
                     val itemName = item.name.trim().take(MAX_ITEM_NAME_LENGTH)
                     if (itemName.isEmpty()) {
