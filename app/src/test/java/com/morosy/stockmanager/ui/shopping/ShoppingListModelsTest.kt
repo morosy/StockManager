@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.shopping
+package com.morosy.stockmanager.ui.shopping
 
 import com.morosy.stockmanager.data.db.BoardEntity
 import com.morosy.stockmanager.data.db.BoardWithItems

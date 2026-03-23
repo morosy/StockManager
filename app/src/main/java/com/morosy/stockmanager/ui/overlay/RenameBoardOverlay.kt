@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.overlay
+package com.morosy.stockmanager.ui.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

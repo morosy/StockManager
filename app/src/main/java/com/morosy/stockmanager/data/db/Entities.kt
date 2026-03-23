@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data.db
+package com.morosy.stockmanager.data.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

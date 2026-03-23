@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.data
+package com.morosy.stockmanager.data
 
 import com.morosy.stockmanager.data.db.BoardWithItems
 import com.morosy.stockmanager.data.db.StockItemEntity

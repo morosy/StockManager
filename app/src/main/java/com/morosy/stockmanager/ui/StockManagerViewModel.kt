@@ -87,25 +87,30 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun toggleStock() {
+    fun toggleFilterType(isStockFilter: Boolean) {
         viewModelScope.launch {
             repo.updateSettings { s ->
-                val nextShowStock = !s.showStock
-                val nextShowOut = if (!nextShowStock && !s.showOut) true else s.showOut
-                s.copy(showStock = nextShowStock, showOut = nextShowOut)
+                when {
+                    isStockFilter -> {
+                        val nextShowStock = !s.showStock
+                        val nextShowOut = if (!nextShowStock && !s.showOut) true else s.showOut
+                        s.copy(showStock = nextShowStock, showOut = nextShowOut)
+                    }
+                    else -> {
+                        val nextShowOut = !s.showOut
+                        val nextShowStock = if (!nextShowOut && !s.showStock) true else s.showStock
+                        s.copy(showOut = nextShowOut, showStock = nextShowStock)
+                    }
+                }
             }
         }
     }
 
-    fun toggleOut() {
-        viewModelScope.launch {
-            repo.updateSettings { s ->
-                val nextShowOut = !s.showOut
-                val nextShowStock = if (!nextShowOut && !s.showStock) true else s.showStock
-                s.copy(showOut = nextShowOut, showStock = nextShowStock)
-            }
-        }
-    }
+    @Deprecated("Use toggleFilterType(true) instead", ReplaceWith("toggleFilterType(true)"))
+    fun toggleStock() = toggleFilterType(isStockFilter = true)
+
+    @Deprecated("Use toggleFilterType(false) instead", ReplaceWith("toggleFilterType(false)"))
+    fun toggleOut() = toggleFilterType(isStockFilter = false)
 
     fun selectBoard(boardId: Long) {
         viewModelScope.launch {
@@ -141,7 +146,7 @@ class StockManagerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-        fun toggleItem(item: StockItemEntity) {
+    fun toggleItem(item: StockItemEntity) {
         viewModelScope.launch {
             repo.toggleItem(item)
         }

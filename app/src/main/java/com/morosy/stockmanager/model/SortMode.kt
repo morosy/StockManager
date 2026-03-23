@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.model
+package com.morosy.stockmanager.model
 
 import com.morosy.stockmanager.data.db.StockItemStatus
 

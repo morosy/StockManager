@@ -1,4 +1,4 @@
-﻿# ForGenerateAI.md
+# ForGenerateAI.md
 
 ## StockManager コンテキストガイド
 最終更新: 2026-03-23

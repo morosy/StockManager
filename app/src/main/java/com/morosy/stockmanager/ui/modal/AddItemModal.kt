@@ -1,4 +1,4 @@
-﻿package com.morosy.stockmanager.ui.modal
+package com.morosy.stockmanager.ui.modal
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

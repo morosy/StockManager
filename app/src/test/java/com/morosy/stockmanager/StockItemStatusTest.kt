@@ -1,7 +1,6 @@
 package com.morosy.stockmanager
 
 import com.morosy.stockmanager.data.db.StockItemStatus
-import com.morosy.stockmanager.model.SortMode
 import org.junit.Test
 import org.junit.Assert.*
 
