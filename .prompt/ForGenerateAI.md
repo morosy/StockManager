@@ -1,4 +1,4 @@
-# ForGenerateAI.md
+﻿# ForGenerateAI.md
 
 ## StockManager コンテキストガイド
 最終更新: 2026-03-23
@@ -602,4 +602,6 @@ app/src/main/java/com/morosy/stockmanager/
 - UI / DB / import-export の 3 領域の整合を見る
 - 互換性に関わる変更は、コードだけでなく migration とサンプルも確認する
 - 1 ファイルだけ見て判断せず、関連層を最低限たどる
+- 文字コードはUTF-8で統一する
+- 改行コードはCRLFに統一する
 - 変更後はコンパイル確認を行う

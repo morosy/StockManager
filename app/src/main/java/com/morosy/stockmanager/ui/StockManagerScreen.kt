@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -760,6 +761,13 @@ fun StockManagerScreen(
                                 onEditName = { openRenameItem(item.id, item.name) },
                                 onDelete = { requestDeleteItem(item.id) }
                             )
+                        }
+                        items(
+                            items = listOf(Unit),
+                            key = { "bottom_spacer" },
+                            span = { GridItemSpan(maxLineSpan) }
+                        ) {
+                            Spacer(modifier = Modifier.height(84.dp))
                         }
                     }
                 }
