@@ -830,7 +830,7 @@ fun StockManagerScreen(
                     }
                 }
 
-                if (hasBoard) {
+                if (hasBoard && !editMode) {
                     ExtendedFloatingActionButton(
                         onClick = { openShoppingListOverlay() },
                         modifier = Modifier
@@ -851,7 +851,7 @@ fun StockManagerScreen(
                     }
                 }
 
-                if (hasBoard) {
+                if (hasBoard && !editMode) {
                     FloatingActionButton(
                         onClick = {
                             editMode = !editMode
@@ -870,6 +870,31 @@ fun StockManagerScreen(
                         contentColor = colorScheme.onPrimary
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = "編集")
+                    }
+                }
+
+                if (hasBoard && editMode) {
+                    ExtendedFloatingActionButton(
+                        onClick = { editMode = false },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(start = 96.dp, end = 96.dp, bottom = 24.dp)
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        containerColor = colorScheme.surface,
+                        contentColor = colorScheme.error
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = "編集を終了"
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = "編集を終了",
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
 
