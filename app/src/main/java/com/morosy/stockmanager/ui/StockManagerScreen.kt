@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -171,6 +172,7 @@ fun StockManagerScreen(
 
     var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
     val tutorialTargets = remember { mutableStateMapOf<TutorialTarget, Rect>() }
+    val itemGridState = rememberLazyGridState()
     var tutorialVisible by rememberSaveable { mutableStateOf(false) }
     var tutorialStep by rememberSaveable { mutableStateOf(TutorialStep.OPEN_BOARD_LIST) }
     var tutorialAutoStarted by rememberSaveable { mutableStateOf(false) }
@@ -505,6 +507,17 @@ fun StockManagerScreen(
         delay(100)
     }
 
+    LaunchedEffect(tutorialVisible, tutorialStep, boardEditMode) {
+        if (!tutorialVisible || tutorialStep != TutorialStep.EXPLAIN_ITEM || boardEditMode) {
+            return@LaunchedEffect
+        }
+        tutorialTargets.remove(TutorialTarget.CURRENT_ITEM)
+        if (itemGridState.firstVisibleItemIndex != 0 || itemGridState.firstVisibleItemScrollOffset != 0) {
+            itemGridState.scrollToItem(0)
+        }
+        delay(100)
+    }
+
     val tutorialTargetRect = tutorialTargets[tutorialStep.target]
     val hideTutorialOverlay =
         !tutorialVisible ||
@@ -732,6 +745,7 @@ fun StockManagerScreen(
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
+                        state = itemGridState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(24.dp),
