@@ -235,3 +235,23 @@ v1.1.9
 - Added Item 1 to Board 1 in initial state
 </en-US>
 ```
+
+```1.2.0
+<ja-JP>
+v1.2.0
+【修正点】
+- 一部アイテムをタップしずらい問題を解決
+- アイテム編集モードのレイアウトを修正
+- チュートリアルの一部修正
+- ナビゲーションバーに依存したレイアウトを修正
+</ja-JP>
+
+<en-US>
+v1.2.0
+[Fixes]
+- Fixed issue where some items were difficult to tap
+- Updated layout of item edit mode
+- Fixed some issues in the tutorial
+- Fixed layout dependent on navigation bar
+</en-US>
+```
