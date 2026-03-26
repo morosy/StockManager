@@ -69,6 +69,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.morosy.stockmanager.R
 import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
@@ -119,6 +123,12 @@ fun StockManagerScreen(
     val stockBorder = colorScheme.outline.copy(alpha = 0.35f)
     val outBg = colorScheme.errorContainer
     val outText = colorScheme.onErrorContainer
+    val density = LocalDensity.current
+    val view = LocalView.current
+    val navigationBarBottomInsetPx = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+    val navigationBarBottomInset = with(density) { navigationBarBottomInsetPx.toDp() }
+    val bottomActionExtraPadding = 24.dp
+    val gridBottomSpacerHeight = 56.dp + bottomActionExtraPadding + navigationBarBottomInset + 4.dp
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -610,6 +620,7 @@ fun StockManagerScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = appBg,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Box(
@@ -781,7 +792,7 @@ fun StockManagerScreen(
                             key = { "bottom_spacer" },
                             span = { GridItemSpan(maxLineSpan) }
                         ) {
-                            Spacer(modifier = Modifier.height(84.dp))
+                            Spacer(modifier = Modifier.height(gridBottomSpacerHeight))
                         }
                     }
                 }
@@ -850,7 +861,7 @@ fun StockManagerScreen(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding()
-                            .padding(start = 96.dp, end = 96.dp, bottom = 24.dp)
+                            .padding(start = 96.dp, end = 96.dp, bottom = bottomActionExtraPadding)
                             .fillMaxWidth()
                             .height(56.dp)
                             .tutorialTarget(TutorialTarget.SHOPPING_LIST_FAB, tutorialTargets),
@@ -876,7 +887,7 @@ fun StockManagerScreen(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .navigationBarsPadding()
-                            .padding(start = 24.dp, bottom = 24.dp)
+                            .padding(start = 24.dp, bottom = bottomActionExtraPadding)
                             .size(56.dp)
                             .tutorialTarget(TutorialTarget.ITEM_EDIT_FAB, tutorialTargets),
                         shape = CircleShape,
@@ -893,7 +904,7 @@ fun StockManagerScreen(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding()
-                            .padding(start = 96.dp, end = 96.dp, bottom = 24.dp)
+                            .padding(start = 96.dp, end = 96.dp, bottom = bottomActionExtraPadding)
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(20.dp),
@@ -918,7 +929,7 @@ fun StockManagerScreen(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
-                            .padding(end = 24.dp, bottom = 24.dp)
+                            .padding(end = 24.dp, bottom = bottomActionExtraPadding)
                             .size(56.dp)
                             .tutorialTarget(TutorialTarget.ITEM_ADD_FAB, tutorialTargets),
                         shape = CircleShape,
