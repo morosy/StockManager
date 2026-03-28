@@ -61,7 +61,7 @@ enum class TutorialStep(
     BOARD_DISPLAY_SWITCH(
         target = TutorialTarget.CURRENT_BOARD_ITEM,
         title = "表示を切り替える",
-        message = "ここをタップすると、表示するボードを切り替えられます。"
+        message = "ここをタップすると、表示するボードを切り替えられます。ホーム画面では左右スワイプでもボード移動ができます。"
     ),
     RENAME_BOARD(
         target = TutorialTarget.BOARD_TITLE,

@@ -25,10 +25,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,6 +61,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -85,6 +88,7 @@ import com.morosy.stockmanager.R
 import com.morosy.stockmanager.data.BoardTransferFormat
 import com.morosy.stockmanager.data.ExportPayload
 import com.morosy.stockmanager.data.db.BoardEntity
+import com.morosy.stockmanager.data.db.StockItemEntity
 import com.morosy.stockmanager.data.db.StockItemStatus
 import com.morosy.stockmanager.model.SortMode
 import com.morosy.stockmanager.model.statusRank
@@ -146,14 +150,15 @@ fun StockManagerScreen(
     val currentBoardName = currentBoardEntity?.name ?: ""
     val currentItems = currentBoardWithItems?.items ?: emptyList()
     val hasBoard = currentBoardEntity != null
+    val currentBoardIndex = remember(ui.boards, ui.currentBoardId) {
+        ui.boards.indexOfFirst { it.board.id == ui.currentBoardId }.takeIf { it >= 0 } ?: 0
+    }
     val emptyStateTitle = when {
         ui.boards.isEmpty() -> "ボートがありません"
-        currentItems.isEmpty() -> "アイテムがありません"
         else -> null
     }
     val emptyStateMessage = when {
         ui.boards.isEmpty() -> "ボードを追加してください"
-        currentItems.isEmpty() -> "アイテムを追加してください"
         else -> null
     }
 
@@ -179,10 +184,17 @@ fun StockManagerScreen(
     var pendingDeleteBoardId by remember { mutableStateOf<Long?>(null) }
     var pendingDeleteBoardName by remember { mutableStateOf<String?>(null) }
     val selectedShoppingBoardIds = remember { mutableStateListOf<Long>() }
+    val boardGridStates = remember { mutableMapOf<Long, LazyGridState>() }
+    val currentBoardGridState = currentBoardEntity?.let { board ->
+        boardGridStates.getOrPut(board.id) { LazyGridState() }
+    }
+    val pagerState = rememberPagerState(
+        initialPage = currentBoardIndex,
+        pageCount = { ui.boards.size }
+    )
 
     var pendingExportPayload by remember { mutableStateOf<ExportPayload?>(null) }
     val tutorialTargets = remember { mutableStateMapOf<TutorialTarget, Rect>() }
-    val itemGridState = rememberLazyGridState()
     var tutorialVisible by rememberSaveable { mutableStateOf(false) }
     var tutorialStep by rememberSaveable { mutableStateOf(TutorialStep.OPEN_BOARD_LIST) }
     var tutorialAutoStarted by rememberSaveable { mutableStateOf(false) }
@@ -289,27 +301,7 @@ fun StockManagerScreen(
         }
     }
 
-    val filteredSortedItems = remember(
-        currentItems,
-        ui.showStock,
-        ui.showOut,
-        ui.sortMode,
-        ui.query
-    ) {
-        val q = ui.query.trim()
 
-        val filtered = currentItems.filter { item ->
-            val normalizedStatus = StockItemStatus.normalize(item.status)
-            val passStock =
-                (StockItemStatus.isStockVisible(normalizedStatus) && ui.showStock) ||
-                    (normalizedStatus == StockItemStatus.OUT_OF_STOCK && ui.showOut)
-            val passQuery = q.isEmpty() || item.name.contains(q, ignoreCase = true)
-            passStock && passQuery
-        }
-
-        sortItemsForDisplay(filtered, ui.sortMode)
-
-    }
     val selectedShoppingBoardIdsSnapshot = selectedShoppingBoardIds.toList()
     val shoppingListSections = remember(ui.boards, ui.sortMode, selectedShoppingBoardIdsSnapshot) {
         buildShoppingListSections(
@@ -402,6 +394,37 @@ fun StockManagerScreen(
             shoppingListOverlayStep = ShoppingListOverlayStep.BoardSelection
             selectedShoppingBoardIds.clear()
         }
+    }
+
+    LaunchedEffect(ui.boards) {
+        val boardIds = ui.boards.map { it.board.id }.toSet()
+        boardGridStates.keys.retainAll(boardIds)
+    }
+
+    LaunchedEffect(currentBoardIndex, ui.boards.size) {
+        if (ui.boards.isEmpty()) {
+            return@LaunchedEffect
+        }
+        if (pagerState.currentPage == currentBoardIndex) {
+            return@LaunchedEffect
+        }
+        pagerState.animateScrollToPage(currentBoardIndex)
+    }
+
+    LaunchedEffect(pagerState, ui.boards, ui.currentBoardId) {
+        if (ui.boards.isEmpty()) {
+            return@LaunchedEffect
+        }
+        snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
+            .collect { (page, isScrolling) ->
+                if (isScrolling) {
+                    return@collect
+                }
+                val boardId = ui.boards.getOrNull(page)?.board?.id ?: return@collect
+                if (boardId != ui.currentBoardId) {
+                    viewModel.selectBoard(boardId)
+                }
+            }
     }
 
     LaunchedEffect(ui.tutorialSeen, ui.shouldAutoStartTutorial, ui.settingsResolved) {
@@ -522,8 +545,9 @@ fun StockManagerScreen(
             return@LaunchedEffect
         }
         tutorialTargets.remove(TutorialTarget.CURRENT_ITEM)
-        if (itemGridState.firstVisibleItemIndex != 0 || itemGridState.firstVisibleItemScrollOffset != 0) {
-            itemGridState.scrollToItem(0)
+        val gridState = currentBoardGridState ?: return@LaunchedEffect
+        if (gridState.firstVisibleItemIndex != 0 || gridState.firstVisibleItemScrollOffset != 0) {
+            gridState.scrollToItem(0)
         }
         delay(100)
     }
@@ -754,46 +778,51 @@ fun StockManagerScreen(
                             .padding(horizontal = 24.dp)
                     )
                 } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        state = itemGridState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(filteredSortedItems, key = { it.id }) { item ->
-                            MagnetCard(
-                                item = item,
-                                stockBg = stockBg,
-                                stockText = stockText,
-                                stockBorder = stockBorder,
-                                outBg = outBg,
-                                outText = outText,
-                                modifier = if (item.id == filteredSortedItems.firstOrNull()?.id) {
-                                    Modifier.tutorialTarget(TutorialTarget.CURRENT_ITEM, tutorialTargets)
-                                } else {
-                                    Modifier
-                                },
-                                editMode = editMode,
-                                isDeleting = deletingIds.contains(item.id),
-                                onToggle = {
-                                    if (!editMode) {
-                                        viewModel.toggleItem(item)
-                                    }
-                                },
-                                onEditName = { openRenameItem(item.id, item.name) },
-                                onDelete = { requestDeleteItem(item.id) }
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        beyondViewportPageCount = 1,
+                        pageSpacing = 12.dp,
+                        userScrollEnabled = ui.boards.size > 1 && !drawerOpen,
+                        key = { page -> ui.boards[page].board.id }
+                    ) { page ->
+                        val boardWithItems = ui.boards[page]
+                        val displayItems = remember(
+                            boardWithItems.items,
+                            ui.showStock,
+                            ui.showOut,
+                            ui.sortMode,
+                            ui.query
+                        ) {
+                            filterAndSortItemsForDisplay(
+                                items = boardWithItems.items,
+                                showStock = ui.showStock,
+                                showOut = ui.showOut,
+                                sortMode = ui.sortMode,
+                                query = ui.query
                             )
                         }
-                        items(
-                            items = listOf(Unit),
-                            key = { "bottom_spacer" },
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            Spacer(modifier = Modifier.height(gridBottomSpacerHeight))
-                        }
+                        BoardPageContent(
+                            displayItems = displayItems,
+                            gridState = boardGridStates.getOrPut(boardWithItems.board.id) { LazyGridState() },
+                            stockBg = stockBg,
+                            stockText = stockText,
+                            stockBorder = stockBorder,
+                            outBg = outBg,
+                            outText = outText,
+                            editMode = editMode,
+                            deletingIds = deletingIds,
+                            gridBottomSpacerHeight = gridBottomSpacerHeight,
+                            showTutorialTarget = boardWithItems.board.id == ui.currentBoardId,
+                            tutorialTargets = tutorialTargets,
+                            onToggle = { item ->
+                                if (!editMode) {
+                                    viewModel.toggleItem(item)
+                                }
+                            },
+                            onEditName = { item -> openRenameItem(item.id, item.name) },
+                            onDelete = { item -> requestDeleteItem(item.id) }
+                        )
                     }
                 }
 
@@ -1161,6 +1190,95 @@ private fun EmptyHomeMessage(
     }
 }
 
+@Composable
+private fun BoardPageContent(
+    displayItems: List<StockItemEntity>,
+    gridState: LazyGridState,
+    stockBg: Color,
+    stockText: Color,
+    stockBorder: Color,
+    outBg: Color,
+    outText: Color,
+    editMode: Boolean,
+    deletingIds: List<Long>,
+    gridBottomSpacerHeight: androidx.compose.ui.unit.Dp,
+    showTutorialTarget: Boolean,
+    tutorialTargets: MutableMap<TutorialTarget, Rect>,
+    onToggle: (StockItemEntity) -> Unit,
+    onEditName: (StockItemEntity) -> Unit,
+    onDelete: (StockItemEntity) -> Unit
+) {
+    if (displayItems.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            EmptyHomeMessage(
+                title = "アイテムがありません",
+                message = "アイテムを追加してください",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 24.dp)
+            )
+        }
+        return
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        state = gridState,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(displayItems, key = { it.id }) { item ->
+            MagnetCard(
+                item = item,
+                stockBg = stockBg,
+                stockText = stockText,
+                stockBorder = stockBorder,
+                outBg = outBg,
+                outText = outText,
+                modifier = if (showTutorialTarget && item.id == displayItems.firstOrNull()?.id) {
+                    Modifier.tutorialTarget(TutorialTarget.CURRENT_ITEM, tutorialTargets)
+                } else {
+                    Modifier
+                },
+                editMode = editMode,
+                isDeleting = deletingIds.contains(item.id),
+                onToggle = { onToggle(item) },
+                onEditName = { onEditName(item) },
+                onDelete = { onDelete(item) }
+            )
+        }
+        items(
+            items = listOf(Unit),
+            key = { "bottom_spacer" },
+            span = { GridItemSpan(maxLineSpan) }
+        ) {
+            Spacer(modifier = Modifier.height(gridBottomSpacerHeight))
+        }
+    }
+}
+
+private fun filterAndSortItemsForDisplay(
+    items: List<StockItemEntity>,
+    showStock: Boolean,
+    showOut: Boolean,
+    sortMode: SortMode,
+    query: String
+): List<StockItemEntity> {
+    val normalizedQuery = query.trim()
+    val filtered = items.filter { item ->
+        val normalizedStatus = StockItemStatus.normalize(item.status)
+        val passStock =
+            (StockItemStatus.isStockVisible(normalizedStatus) && showStock) ||
+                (normalizedStatus == StockItemStatus.OUT_OF_STOCK && showOut)
+        val passQuery = normalizedQuery.isEmpty() || item.name.contains(normalizedQuery, ignoreCase = true)
+        passStock && passQuery
+    }
+    return sortItemsForDisplay(filtered, sortMode)
+}
+
 private fun Modifier.tutorialTarget(
     target: TutorialTarget,
     registry: MutableMap<TutorialTarget, Rect>
@@ -1176,7 +1294,6 @@ private fun Modifier.tutorialTarget(
         }
     }
 }
-
 
 
 
