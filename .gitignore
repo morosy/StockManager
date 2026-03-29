@@ -18,6 +18,6 @@ local.properties
 # privacy.txt
 .keys/
 app/release/
+.release/
 
 .vscode/
-
